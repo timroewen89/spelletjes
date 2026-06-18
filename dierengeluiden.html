@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dierengeluiden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#f97316;--violet-dark:#ea580c;--violet-soft:#ffedd5;}
+  .top{width:100%;max-width:500px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:500px;border-radius:28px;padding:22px 20px 26px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);margin-bottom:4px;}
+  .sub{color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:14px;}
+  .progress-wrap{background:var(--surface2);border-radius:8px;height:10px;margin-bottom:18px;}
+  .progress-bar{background:var(--violet);border-radius:8px;height:10px;transition:width .4s;}
+  .sound-box{background:var(--violet-soft);border-radius:22px;padding:26px 20px 22px;margin-bottom:18px;}
+  .sound-emoji{font-size:3.5rem;display:block;margin-bottom:8px;animation:floatAnim 2s ease-in-out infinite;}
+  @keyframes floatAnim{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  .sound-text{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2.2rem;color:var(--violet-dark);letter-spacing:2px;}
+  .sound-text.pop{animation:popIn .45s ease forwards;}
+  @keyframes popIn{0%{transform:scale(.6);opacity:0}65%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+  .wave{display:flex;gap:5px;justify-content:center;margin-top:12px;align-items:center;height:30px;}
+  .wave-bar{width:7px;border-radius:4px;background:var(--violet);opacity:.65;}
+  .wave-bar:nth-child(1){animation:waveAnim .9s .00s ease-in-out infinite;}
+  .wave-bar:nth-child(2){animation:waveAnim .9s .15s ease-in-out infinite;}
+  .wave-bar:nth-child(3){animation:waveAnim .9s .30s ease-in-out infinite;}
+  .wave-bar:nth-child(4){animation:waveAnim .9s .45s ease-in-out infinite;}
+  .wave-bar:nth-child(5){animation:waveAnim .9s .60s ease-in-out infinite;}
+  @keyframes waveAnim{0%,100%{height:5px}50%{height:26px}}
+  .answer-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  .ans-btn{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.1rem;background:var(--surface);border:none;border-radius:16px;padding:14px 10px;cursor:pointer;transition:background .15s,transform .1s;box-shadow:0 4px 0 var(--surface2);line-height:1.3;}
+  .ans-btn:hover:not(:disabled){background:#fed7aa;transform:scale(1.03);}
+  .ans-btn:disabled{cursor:default;}
+  .ans-btn.correct{background:#bbf7d0!important;box-shadow:0 4px 0 #86efac;color:#166534;}
+  .ans-btn.wrong{background:#fee2e2!important;box-shadow:0 4px 0 #fca5a5;color:#991b1b;}
+  .feedback{min-height:28px;font-family:'Fredoka',sans-serif;font-size:1.05rem;font-weight:700;margin-top:6px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .overlay{position:absolute;inset:22px;background:rgba(255,248,238,.96);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:360px;line-height:1.5;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Score</span><span class="val" id="scorePill">0/10</span></div>
+  <div class="pill"><span class="lbl">Beste</span><span class="val" id="bestPill">—</span></div>
+</div>
+<div class="card">
+  <h1>🔊 Dierengeluiden</h1>
+  <p class="sub">Welk dier maakt dit geluid?</p>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+  <div class="sound-box">
+    <span class="sound-emoji" id="soundEmoji">🐾</span>
+    <div class="sound-text" id="soundText">???</div>
+    <div class="wave">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div>
+    </div>
+  </div>
+  <div class="answer-grid" id="answerGrid"></div>
+  <div class="feedback" id="feedback"></div>
+  <div class="overlay" id="startScreen">
+    <h2>🔊 Dierengeluiden</h2>
+    <p>Lees het dierengeluid en raad welk dier het maakt!<br>Kies het juiste dier uit 4 antwoorden.<br>10 vragen — doe je best!</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="endScreen">
+    <h2 id="endTitle">Klaar!</h2>
+    <p id="endMsg"></p>
+    <button class="bigbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">Lees het geluid — kies het goede dier!</p>
+
+<script>
+const BANK=[
+  {sound:'WOEF! WOEF!',emoji:'🐕',animal:'Hond',wrong:['Kat','Koe','Varken']},
+  {sound:'MIAU! MIAU!',emoji:'🐈',animal:'Kat',wrong:['Hond','Muis','Vogel']},
+  {sound:'BOEOE!',emoji:'🐄',animal:'Koe',wrong:['Schaap','Paard','Varken']},
+  {sound:'KNOR KNOR!',emoji:'🐷',animal:'Varken',wrong:['Koe','Hond','Eend']},
+  {sound:'BÈÈ! BÈÈ!',emoji:'🐑',animal:'Schaap',wrong:['Koe','Geit','Varken']},
+  {sound:'KWAK KWAK!',emoji:'🦆',animal:'Eend',wrong:['Kip','Kikker','Vogel']},
+  {sound:'KWAAK KWAAK!',emoji:'🐸',animal:'Kikker',wrong:['Eend','Slang','Vogel']},
+  {sound:'TOK TOK TOK!',emoji:'🐔',animal:'Kip',wrong:['Eend','Pauw','Duif']},
+  {sound:'HIEEE HIEEE!',emoji:'🐴',animal:'Paard',wrong:['Koe','Schaap','Ezel']},
+  {sound:'OEHOEOEH!',emoji:'🦉',animal:'Uil',wrong:['Duif','Kraai','Mus']},
+  {sound:'BZZZ BZZZ!',emoji:'🐝',animal:'Bij',wrong:['Vlieg','Wesp','Mug']},
+  {sound:'PIEP PIEP!',emoji:'🐭',animal:'Muis',wrong:['Kat','Hamster','Vogel']},
+  {sound:'SSSSSS!',emoji:'🐍',animal:'Slang',wrong:['Hagedis','Worm','Rups']},
+  {sound:'PRRT TOET!',emoji:'🐘',animal:'Olifant',wrong:['Neushoorn','Nijlpaard','Giraf']},
+  {sound:'GRRRR BRUL!',emoji:'🦁',animal:'Leeuw',wrong:['Tijger','Beer','Wolf']},
+];
+
+const EMOJI_MAP={
+  Hond:'🐕',Kat:'🐈',Koe:'🐄',Varken:'🐷',Schaap:'🐑',Eend:'🦆',Kikker:'🐸',Kip:'🐔',
+  Paard:'🐴',Uil:'🦉',Bij:'🐝',Muis:'🐭',Slang:'🐍',Olifant:'🐘',Leeuw:'🦁',
+  Tijger:'🐯',Beer:'🐻',Wolf:'🐺',Vogel:'🐦',Vlieg:'🪰',Wesp:'🐝',Mug:'🦟',
+  Hamster:'🐹',Geit:'🐐',Kraai:'🐦',Mus:'🐦',Duif:'🕊️',Pauw:'🦚',Ezel:'🐴',
+  Hagedis:'🦎',Worm:'🪱',Rups:'🐛',Neushoorn:'🦏',Nijlpaard:'🦛',Giraf:'🦒',
+};
+
+const TOTAL=10,BKEY='dierengeluiden_best';
+const shuffle=a=>[...a].sort(()=>Math.random()-.5);
+const $=id=>document.getElementById(id);
+
+let best=null;try{const v=parseInt(localStorage.getItem(BKEY));if(!isNaN(v)&&v>=0)best=v;}catch(e){}
+if(best!==null)$('bestPill').textContent=best+'/'+TOTAL;
+
+let questions=[],qIdx=0,score=0,answered=false;
+
+function startGame(){
+  questions=shuffle(BANK).slice(0,TOTAL);
+  qIdx=0;score=0;answered=false;
+  $('scorePill').textContent='0/'+TOTAL;
+  $('progressBar').style.width='0%';
+  $('startScreen').classList.add('hidden-el');
+  $('endScreen').classList.add('hidden-el');
+  showQuestion();
+}
+
+function showQuestion(){
+  answered=false;
+  const q=questions[qIdx];
+  $('soundEmoji').textContent=q.emoji;
+  const st=$('soundText');
+  st.className='sound-text';
+  st.textContent=q.sound;
+  void st.offsetWidth;
+  st.className='sound-text pop';
+  $('feedback').textContent='';$('feedback').className='feedback';
+  $('progressBar').style.width=(qIdx/TOTAL*100)+'%';
+
+  const opts=shuffle([q.animal,...shuffle(q.wrong).slice(0,3)]);
+  const grid=$('answerGrid');grid.innerHTML='';
+  opts.forEach(opt=>{
+    const b=document.createElement('button');
+    b.className='ans-btn';
+    b.textContent=(EMOJI_MAP[opt]||'🐾')+' '+opt;
+    b.onclick=()=>answer(opt,q.animal,b);
+    grid.appendChild(b);
+  });
+}
+
+function answer(chosen,correct,btn){
+  if(answered)return;
+  answered=true;
+  document.querySelectorAll('.ans-btn').forEach(b=>{
+    b.disabled=true;
+    if(b.textContent.includes(correct))b.classList.add('correct');
+  });
+  const fb=$('feedback');
+  if(chosen===correct){
+    score++;$('scorePill').textContent=score+'/'+TOTAL;
+    btn.classList.add('correct');
+    fb.className='feedback good';fb.textContent='✅ Goed! Dat is een '+correct+'!';
+  } else {
+    btn.classList.add('wrong');
+    fb.className='feedback bad';fb.textContent='❌ Nee! Dat was een '+correct+'!';
+  }
+  qIdx++;
+  setTimeout(()=>{if(qIdx<TOTAL)showQuestion();else endGame();},1400);
+}
+
+function endGame(){
+  $('progressBar').style.width='100%';
+  let rec=false;
+  if(best===null||score>best){best=score;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}
+  if(best!==null)$('bestPill').textContent=best+'/'+TOTAL;
+  const pct=score/TOTAL;
+  $('endTitle').textContent=pct===1?'🏆 Perfect!':pct>=.8?'🌟 Heel goed!':pct>=.6?'👍 Goed bezig!':'🐾 Blijf oefenen!';
+  $('endMsg').innerHTML='Je had <b>'+score+' van de '+TOTAL+'</b> goed!'+(rec?' 🏅 Nieuw record!':'');
+  $('endScreen').classList.remove('hidden-el');
+}
+
+$('startBtn').onclick=startGame;
+$('againBtn').onclick=startGame;
+</script>
+</body>
+</html>

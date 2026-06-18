@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seizoenen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#10b981;--violet-dark:#059669;}
+  .top{width:100%;max-width:600px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:600px;border-radius:28px;padding:20px 18px 24px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:14px;}
+
+  /* Items tray */
+  .tray-label{font-family:'Fredoka',sans-serif;font-weight:700;font-size:.85rem;color:var(--ink-soft);text-align:center;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;}
+  .items-tray{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;min-height:60px;padding:10px;background:var(--surface);border-radius:18px;margin-bottom:16px;}
+  .item-card{font-family:'Fredoka',sans-serif;font-weight:700;font-size:.95rem;background:#fff;border-radius:14px;padding:10px 14px;cursor:grab;user-select:none;display:flex;align-items:center;gap:6px;box-shadow:0 4px 0 var(--surface2);border:2px solid transparent;transition:border-color .1s,opacity .2s,transform .15s;touch-action:none;}
+  .item-card:hover{border-color:var(--violet);transform:scale(1.04);}
+  .item-card.dragging{opacity:.35;cursor:grabbing;}
+  .item-card.shake{animation:shake .5s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+  .item-e{font-size:1.4rem;}
+
+  /* Ghost (dragged clone) */
+  .item-ghost{position:fixed;z-index:9999;pointer-events:none;font-family:'Fredoka',sans-serif;font-weight:700;font-size:.95rem;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.18);border:2px solid var(--violet);display:flex;align-items:center;gap:6px;white-space:nowrap;transform:translate(-50%,-50%) rotate(3deg);}
+
+  /* Season boxes */
+  .seasons-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .season-box{border-radius:18px;padding:12px 10px 14px;min-height:110px;border:3px solid transparent;transition:border-color .15s,box-shadow .15s;position:relative;}
+  .season-box.drop-hover{border-color:var(--violet);box-shadow:0 0 0 4px rgba(16,185,129,.2);}
+  .season-title{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.05rem;text-align:center;margin-bottom:8px;}
+  .season-items{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;}
+  .placed-chip{font-family:'Fredoka',sans-serif;font-size:.8rem;font-weight:700;background:rgba(255,255,255,.7);border-radius:10px;padding:4px 8px;display:flex;align-items:center;gap:4px;animation:chipIn .3s ease;}
+  @keyframes chipIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+
+  /* Season backgrounds */
+  .season-lente{background:#fce7f3;}
+  .season-zomer{background:#fef9c3;}
+  .season-herfst{background:#ffedd5;}
+  .season-winter{background:#eff6ff;}
+
+  /* Overlay */
+  .overlay{position:absolute;inset:20px;background:rgba(255,248,238,.96);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:380px;line-height:1.5;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Goed</span><span class="val" id="correctPill">0/16</span></div>
+  <div class="pill"><span class="lbl">Fouten</span><span class="val" id="errorPill">0</span></div>
+</div>
+<div class="card">
+  <h1>🌿 Seizoenen</h1>
+  <p class="sub">Sleep elk item naar het juiste seizoen!</p>
+  <div class="tray-label" id="trayLabel">Items om te slepen</div>
+  <div class="items-tray" id="itemsTray"></div>
+  <div class="seasons-grid">
+    <div class="season-box season-lente" id="drop-lente" data-season-id="lente">
+      <div class="season-title">🌸 Lente</div>
+      <div class="season-items" id="placed-lente"></div>
+    </div>
+    <div class="season-box season-zomer" id="drop-zomer" data-season-id="zomer">
+      <div class="season-title">☀️ Zomer</div>
+      <div class="season-items" id="placed-zomer"></div>
+    </div>
+    <div class="season-box season-herfst" id="drop-herfst" data-season-id="herfst">
+      <div class="season-title">🍁 Herfst</div>
+      <div class="season-items" id="placed-herfst"></div>
+    </div>
+    <div class="season-box season-winter" id="drop-winter" data-season-id="winter">
+      <div class="season-title">❄️ Winter</div>
+      <div class="season-items" id="placed-winter"></div>
+    </div>
+  </div>
+  <div class="overlay" id="startScreen">
+    <h2>🌿 Seizoenen</h2>
+    <p>Sleep elk item naar het juiste seizoen.<br><b>Houd vast</b> en <b>laat los</b> op het goede seizoen!<br>Op mobiel: druk en sleep met je vinger.</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="winScreen">
+    <h2>🏆 Alle items goed gesleept!</h2>
+    <p id="winMsg"></p>
+    <button class="bigbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">Sleep elk item naar Lente, Zomer, Herfst of Winter!</p>
+
+<script>
+const SEASONS=[
+  {id:'lente', label:'Lente', emoji:'🌸',
+   items:[{e:'🌷',l:'Tulp'},{e:'🦋',l:'Vlinder'},{e:'☔',l:'Regenbui'},{e:'🐣',l:'Kuiken'}]},
+  {id:'zomer', label:'Zomer', emoji:'☀️',
+   items:[{e:'🍦',l:'IJsje'},{e:'🕶️',l:'Zonnebril'},{e:'🏊',l:'Zwemmen'},{e:'🍉',l:'Watermeloen'}]},
+  {id:'herfst', label:'Herfst', emoji:'🍁',
+   items:[{e:'🍂',l:'Herfstblad'},{e:'🌰',l:'Kastanje'},{e:'🎃',l:'Pompoen'},{e:'🍎',l:'Appel'}]},
+  {id:'winter', label:'Winter', emoji:'❄️',
+   items:[{e:'⛸️',l:'Schaatsen'},{e:'🧣',l:'Sjaal'},{e:'☃️',l:'Sneeuwpop'},{e:'🎄',l:'Kerstboom'}]},
+];
+
+const TOTAL=16;
+const shuffle=a=>[...a].sort(()=>Math.random()-.5);
+const $=id=>document.getElementById(id);
+
+let correct=0,errors=0,gameActive=false;
+let drag=null;
+
+function buildItems(){
+  // Build flat shuffled list
+  const all=[];
+  SEASONS.forEach(s=>s.items.forEach(item=>all.push({...item,correctSeason:s.id})));
+  const shuffled=shuffle(all);
+
+  const tray=$('itemsTray');tray.innerHTML='';
+  shuffled.forEach(item=>{
+    const el=document.createElement('div');
+    el.className='item-card';
+    el.innerHTML=`<span class="item-e">${item.e}</span><span>${item.l}</span>`;
+    el.dataset.correctSeason=item.correctSeason;
+    el.addEventListener('pointerdown',e=>startDrag(item,el,e));
+    tray.appendChild(el);
+  });
+}
+
+function posGhost(ghost,x,y){
+  ghost.style.left=x+'px';
+  ghost.style.top=y+'px';
+}
+
+function startDrag(item,itemEl,e){
+  if(!gameActive)return;
+  e.preventDefault();
+  const ghost=document.createElement('div');
+  ghost.className='item-ghost';
+  ghost.innerHTML=`<span class="item-e">${item.e}</span><span>${item.l}</span>`;
+  ghost.style.cssText='position:fixed;z-index:9999;pointer-events:none;font-family:\'Fredoka\',sans-serif;font-weight:700;font-size:.95rem;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 8px 24px rgba(0,0,0,.18);border:2px solid var(--violet);display:flex;align-items:center;gap:6px;white-space:nowrap;transform:translate(-50%,-50%) rotate(3deg);';
+  document.body.appendChild(ghost);
+  posGhost(ghost,e.clientX,e.clientY);
+  itemEl.classList.add('dragging');
+  drag={item,itemEl,ghost};
+
+  function onMove(ev){
+    posGhost(ghost,ev.clientX,ev.clientY);
+    highlightSeason(ev.clientX,ev.clientY);
+  }
+  function onUp(ev){
+    document.removeEventListener('pointermove',onMove);
+    document.removeEventListener('pointerup',onUp);
+    ghost.remove();
+    clearHighlights();
+    itemEl.classList.remove('dragging');
+    const seasonId=getSeasonAt(ev.clientX,ev.clientY);
+    handleDrop(item,itemEl,seasonId);
+    drag=null;
+  }
+  document.addEventListener('pointermove',onMove);
+  document.addEventListener('pointerup',onUp);
+}
+
+function getSeasonAt(x,y){
+  const els=document.elementsFromPoint(x,y);
+  for(const el of els){if(el.dataset.seasonId)return el.dataset.seasonId;}
+  return null;
+}
+
+function highlightSeason(x,y){
+  const id=getSeasonAt(x,y);
+  document.querySelectorAll('.season-box').forEach(b=>{
+    b.classList.toggle('drop-hover',b.dataset.seasonId===id&&!!id);
+  });
+}
+
+function clearHighlights(){
+  document.querySelectorAll('.season-box').forEach(b=>b.classList.remove('drop-hover'));
+}
+
+function handleDrop(item,itemEl,targetSeasonId){
+  if(!targetSeasonId)return;
+  if(targetSeasonId===item.correctSeason){
+    correct++;
+    $('correctPill').textContent=correct+'/'+TOTAL;
+    // Add chip to season box
+    const chip=document.createElement('div');
+    chip.className='placed-chip';
+    chip.innerHTML=`<span>${item.e}</span><span>${item.l}</span>`;
+    $('placed-'+item.correctSeason).appendChild(chip);
+    // Remove from tray
+    itemEl.remove();
+    // Update tray label
+    const remaining=$('itemsTray').children.length;
+    $('trayLabel').textContent=remaining>0?remaining+' items over':'Alle items gesleept!';
+    if(correct===TOTAL)setTimeout(showWin,500);
+  } else {
+    errors++;
+    $('errorPill').textContent=errors;
+    itemEl.classList.add('shake');
+    setTimeout(()=>itemEl.classList.remove('shake'),600);
+  }
+}
+
+function showWin(){
+  gameActive=false;
+  const msg=errors===0?'Geen enkele fout! Geweldig! 🌟':'Je had <b>'+errors+' fout'+(errors===1?'':'en')+'</b>. Probeer opnieuw voor een perfecte score!';
+  $('winMsg').innerHTML=msg;
+  $('winScreen').classList.remove('hidden-el');
+}
+
+function startGame(){
+  correct=0;errors=0;gameActive=true;
+  $('correctPill').textContent='0/'+TOTAL;
+  $('errorPill').textContent='0';
+  $('trayLabel').textContent='Sleep de items naar het juiste seizoen';
+  SEASONS.forEach(s=>$('placed-'+s.id).innerHTML='');
+  $('startScreen').classList.add('hidden-el');
+  $('winScreen').classList.add('hidden-el');
+  buildItems();
+}
+
+$('startBtn').onclick=startGame;
+$('againBtn').onclick=startGame;
+</script>
+</body>
+</html>
