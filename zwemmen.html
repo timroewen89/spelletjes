@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zwemmen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#0284c7;--violet-dark:#0369a1;}
+  .top{width:100%;max-width:560px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:560px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:10px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;touch-action:none;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:400px;line-height:1.5;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Jouw tijd</span><span class="val" id="myTime">—</span></div>
+  <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">—</span></div>
+</div>
+<div class="card">
+  <h1>🏊 Zwemmen</h1>
+  <p class="sub">Wissel snel af: ← → ← → om sneller te zwemmen!</p>
+  <canvas id="cv" width="520" height="300"></canvas>
+  <div class="overlay" id="startScreen">
+    <h2>🏊 Zwemmen</h2>
+    <p>Wissel zo snel mogelijk af tussen <b>← en →</b> (of A en D) om te zwemmen.<br>Op mobiel: tik afwisselend links en rechts op het scherm.<br>Race naar de overkant voor de tegenstander!</p>
+    <button class="bigbtn" id="startBtn">Start race 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="endScreen">
+    <h2 id="endTitle">Klaar!</h2>
+    <p id="endMsg"></p>
+    <button class="bigbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+<p class="hint-foot">Wissel ← → af voor elke slag — stop je, dan zak je in snelheid!</p>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=520,H=300;
+const WALL_L=30,WALL_R=W-30,DIST=WALL_R-WALL_L;
+const BKEY='zwemmen_best';
+const $=id=>document.getElementById(id);
+
+let best=null;try{const v=parseFloat(localStorage.getItem(BKEY));if(!isNaN(v))best=v;}catch(e){}
+if(best!==null)$('best').textContent=best.toFixed(2)+'s';
+
+let phase='idle',startTime=0,lastKey=null;
+let pX=WALL_L,pSpd=0,cpuX=WALL_L,cpuSpd=2.6,finished=false;
+let armT=0,bubbles=[];
+let animId=null;
+
+function startGame(){
+  pX=WALL_L;pSpd=0;cpuX=WALL_L;cpuSpd=2.2+Math.random()*.8;
+  lastKey=null;armT=0;bubbles=[];finished=false;
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');
+  phase='play';startTime=performance.now();
+  if(animId)cancelAnimationFrame(animId);
+  loop();
+}
+
+function stroke(side){
+  if(phase!=='play'||finished)return;
+  if(side===lastKey)return;
+  lastKey=side;
+  pSpd=Math.min(pSpd+1.4,7.2);
+  armT+=Math.PI;
+}
+
+function handleKey(e){
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A')stroke('L');
+  else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D')stroke('R');
+}
+
+let lastTouch=null;
+cv.addEventListener('pointerdown',e=>{
+  const rect=cv.getBoundingClientRect();
+  const tx=(e.clientX-rect.left)/(rect.width/W);
+  stroke(tx<W/2?'L':'R');
+});
+document.addEventListener('keydown',handleKey);
+
+function spawnBubble(x,y){
+  bubbles.push({x,y,r:2+Math.random()*3,vx:(Math.random()-.5)*.6,vy:-.4-Math.random()*.6,life:40});
+}
+
+function step(now){
+  if(phase!=='play')return;
+  pSpd=Math.max(0,pSpd-.07);
+  pX=Math.min(pX+pSpd,WALL_R);
+  cpuX=Math.min(cpuX+cpuSpd,WALL_R);
+  if(pSpd>0.5&&Math.random()<.3)spawnBubble(pX-8,H*.35+Math.random()*20-10);
+  if(cpuSpd>0&&Math.random()<.25)spawnBubble(cpuX-8,H*.7+Math.random()*20-10);
+  for(let i=bubbles.length-1;i>=0;i--){
+    const b=bubbles[i];b.x+=b.vx;b.y+=b.vy;b.life--;b.r*=.98;
+    if(b.life<=0||b.r<.5)bubbles.splice(i,1);
+  }
+  if((pX>=WALL_R||cpuX>=WALL_R)&&!finished){
+    finished=true;
+    const elapsed=(now-startTime)/1000;
+    if(pX>=WALL_R){
+      let rec=false;if(best===null||elapsed<best){best=elapsed;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}
+      if(best!==null)$('best').textContent=best.toFixed(2)+'s';
+      $('myTime').textContent=elapsed.toFixed(2)+'s';
+      $('endTitle').textContent='🏆 Je hebt gewonnen!';
+      $('endMsg').innerHTML='Tijd: <b>'+elapsed.toFixed(2)+' seconden</b>'+(rec?' 🏅 Nieuw record!':'');
+    } else {
+      $('myTime').textContent=elapsed.toFixed(2)+'s';
+      $('endTitle').textContent='😅 Tegenstander wint!';
+      $('endMsg').innerHTML='Je tijd: <b>'+elapsed.toFixed(2)+'s</b><br>Wissel sneller af om de volgende keer te winnen!';
+    }
+    phase='done';setTimeout(()=>$('endScreen').classList.remove('hidden-el'),800);
+  }
+}
+
+function drawPool(){
+  ctx.fillStyle='#1a6fa8';ctx.fillRect(0,0,W,H);
+  // Lanes
+  for(let y=0;y<H;y+=10){const c=y%20===0?'rgba(255,255,255,.15)':'rgba(255,255,255,.07)';ctx.fillStyle=c;ctx.fillRect(0,y,W,1);}
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  ctx.fillRect(0,H/2-2,W,4);
+  // Walls
+  ctx.fillStyle='#7ec8e3';ctx.fillRect(0,0,WALL_L,H);ctx.fillRect(WALL_R,0,W-WALL_R,H);
+  // Lane markers
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=2;ctx.setLineDash([6,8]);
+  ctx.beginPath();ctx.moveTo(WALL_L,H/2);ctx.lineTo(WALL_R,H/2);ctx.stroke();
+  ctx.setLineDash([]);
+  // Finish line
+  for(let y=0;y<H;y+=12){ctx.fillStyle=y%24<12?'#fff':'#e53';ctx.fillRect(WALL_R-2,y,4,12);}
+}
+
+function drawBubbles(){
+  for(const b of bubbles){
+    ctx.strokeStyle='rgba(255,255,255,'+Math.min(1,b.life/20)+')';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.stroke();
+  }
+}
+
+function drawSwimmer(x,laneY,color,armPhase,label){
+  // Body
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.ellipse(x,laneY,18,9,0,0,Math.PI*2);ctx.fill();
+  // Head
+  ctx.fillStyle='#fcd5a0';
+  ctx.beginPath();ctx.arc(x+16,laneY,7,0,Math.PI*2);ctx.fill();
+  // Arms
+  ctx.strokeStyle=color;ctx.lineWidth=4;ctx.lineCap='round';
+  const a1=Math.sin(armPhase)*0.8;const a2=Math.sin(armPhase+Math.PI)*0.8;
+  ctx.beginPath();ctx.moveTo(x-5,laneY);ctx.lineTo(x-5+Math.cos(a1-0.3)*22,laneY+Math.sin(a1-0.3)*12);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x-5,laneY);ctx.lineTo(x-5+Math.cos(a2-0.3)*22,laneY+Math.sin(a2-0.3)*12);ctx.stroke();
+  // Label
+  ctx.fillStyle='#fff';ctx.font='bold 11px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillText(label,x,laneY-12);
+}
+
+function drawProgress(){
+  const barY=14,barH=8,barW=WALL_R-WALL_L;
+  // Player bar
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(WALL_L,barY,barW,barH);
+  const pp=Math.min(1,(pX-WALL_L)/DIST);
+  ctx.fillStyle='#7dd3fc';ctx.fillRect(WALL_L,barY,barW*pp,barH);
+  // CPU bar
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(WALL_L,barY+12,barW,barH);
+  const cp=Math.min(1,(cpuX-WALL_L)/DIST);
+  ctx.fillStyle='#fca5a5';ctx.fillRect(WALL_L,barY+12,barW*cp,barH);
+}
+
+function loop(now=0){
+  if(phase==='play')step(now);
+  ctx.clearRect(0,0,W,H);
+  drawPool();
+  drawBubbles();
+  armT+=pSpd*.08;
+  drawSwimmer(pX,H*.33,  '#2563eb',armT,'Jij');
+  drawSwimmer(cpuX,H*.67,'#dc2626',armT+1,'CPU');
+  drawProgress();
+  if(phase==='play')animId=requestAnimationFrame(loop);
+  else if(phase==='done')requestAnimationFrame(loop);
+}
+
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+loop();
+</script>
+</body>
+</html>

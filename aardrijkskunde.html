@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aardrijkskunde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#4f46e5;--violet-dark:#4338ca;}
+  .top{width:100%;max-width:560px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:560px;border-radius:30px;padding:26px 24px 30px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--violet);transform:scale(1.3);}
+  .cat{display:inline-block;font-family:'Fredoka',sans-serif;font-weight:600;color:var(--violet-dark);background:var(--surface);border-radius:999px;padding:6px 16px;font-size:.95rem;margin-bottom:10px;}
+  .q{font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.3rem;color:var(--ink);margin-bottom:16px;min-height:2.6em;display:flex;align-items:center;justify-content:center;}
+  .opts{display:grid;gap:12px;}
+  .opt{font-family:'Fredoka',sans-serif;font-weight:500;font-size:1.15rem;color:var(--ink);background:var(--surface);border:none;border-radius:16px;padding:15px 18px;cursor:pointer;box-shadow:0 5px 0 var(--surface2);transition:transform .06s;text-align:left;}
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .feedback{min-height:30px;font-family:'Fredoka',sans-serif;font-size:1.2rem;font-weight:600;margin-top:14px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .points-pill{background:linear-gradient(180deg,#ffe9a8,#ffd45e);}
+  .points-pill .val{color:#8a5b00;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+  <div class="pill points-pill"><span class="lbl">Op rij</span><span class="val" id="streak">0</span></div>
+</div>
+<div class="card">
+  <h1>🗺️ Aardrijkskunde</h1>
+  <p class="sub">Rivieren, bergen, steden en meer — hoeveel weet jij?</p>
+  <div class="best" id="bestEl"></div>
+  <div class="levelbar" id="levelbar"></div>
+
+  <div id="startScreen">
+    <p class="q">Test je kennis van de wereld! 10 vragen over geografie.</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+
+  <div id="playScreen" class="hidden-el">
+    <div class="cat" id="catEl">Categorie</div>
+    <div class="q" id="qEl"></div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div id="endScreen" class="hidden-el">
+    <div style="font-size:3.4rem" id="endEmoji">🎉</div>
+    <h1 id="endTitle">Goed gedaan!</h1>
+    <p class="sub" id="endText"></p>
+    <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+  </div>
+</div>
+
+<script>
+const BANK=[
+  {c:'🌍 Continenten',q:'Hoeveel continenten heeft de aarde?',a:'7',o:['5','6','7','8']},
+  {c:'🌍 Continenten',q:'Op welk continent ligt Egypte?',a:'Afrika',o:['Azië','Afrika','Europa','Zuid-Amerika']},
+  {c:'🌍 Continenten',q:'Welk continent is het grootst?',a:'Azië',o:['Afrika','Azië','Noord-Amerika','Europa']},
+  {c:'🌍 Continenten',q:'Op welk continent ligt Brazilië?',a:'Zuid-Amerika',o:['Noord-Amerika','Afrika','Zuid-Amerika','Azië']},
+  {c:'🌍 Continenten',q:'Welk continent is ook een land én een eiland?',a:'Australië',o:['Afrika','Australië','Antarctica','Europa']},
+  {c:'🏔️ Bergen',q:'Welke berg is de hoogste ter wereld?',a:'Mount Everest',o:['Mount Kilimanjaro','K2','Mount Everest','Mont Blanc']},
+  {c:'🏔️ Bergen',q:'In welk gebergte ligt de Mount Everest?',a:'De Himalaya',o:['De Alpen','De Andes','De Himalaya','De Rockies']},
+  {c:'🏔️ Bergen',q:'Welk gebergte loopt door heel Zuid-Amerika?',a:'De Andes',o:['De Rockies','De Himalaya','De Alpen','De Andes']},
+  {c:'🏔️ Bergen',q:'Wat is het hoogste gebergte van Europa?',a:'De Alpen',o:['De Pyreneeën','De Karpaten','De Alpen','De Apennijnen']},
+  {c:'🌊 Oceanen',q:'Hoeveel oceanen heeft de aarde?',a:'5',o:['3','4','5','6']},
+  {c:'🌊 Oceanen',q:'Welke oceaan is de grootste?',a:'De Stille Oceaan',o:['De Atlantische Oceaan','De Indische Oceaan','De Stille Oceaan','De Noordelijke IJszee']},
+  {c:'🌊 Oceanen',q:'Welke oceaan ligt tussen Europa en Amerika?',a:'De Atlantische Oceaan',o:['De Stille Oceaan','De Atlantische Oceaan','De Indische Oceaan','De Arctische Oceaan']},
+  {c:'🌊 Oceanen',q:'Welke oceaan grenst aan India?',a:'De Indische Oceaan',o:['De Atlantische Oceaan','De Stille Oceaan','De Indische Oceaan','De Zuidelijke Oceaan']},
+  {c:'🏙️ Hoofdsteden',q:'Wat is de hoofdstad van Duitsland?',a:'Berlijn',o:['München','Berlijn','Hamburg','Frankfurt']},
+  {c:'🏙️ Hoofdsteden',q:'Wat is de hoofdstad van Australië?',a:'Canberra',o:['Sydney','Melbourne','Canberra','Brisbane']},
+  {c:'🏙️ Hoofdsteden',q:'Wat is de hoofdstad van Canada?',a:'Ottawa',o:['Toronto','Vancouver','Ottawa','Montréal']},
+  {c:'🏙️ Hoofdsteden',q:'Wat is de hoofdstad van Brazilië?',a:'Brasília',o:['Rio de Janeiro','São Paulo','Brasília','Salvador']},
+  {c:'🏙️ Hoofdsteden',q:'Wat is de hoofdstad van Japan?',a:'Tokio',o:['Osaka','Kyoto','Tokio','Hiroshima']},
+  {c:'🌊 Rivieren',q:'Welke rivier is de langste ter wereld?',a:'De Nijl',o:['De Amazone','De Nijl','De Mississippi','De Yangtze']},
+  {c:'🌊 Rivieren',q:'Door welk land stroomt de Amazone?',a:'Brazilië',o:['Peru','Colombia','Brazilië','Venezuela']},
+  {c:'🌊 Rivieren',q:'Welke rivier stroomt door Parijs?',a:'De Seine',o:['De Rijn','De Loire','De Seine','De Rhône']},
+  {c:'🌊 Rivieren',q:'Welke rivier stroomt door Amsterdam?',a:'De Amstel',o:['De Rijn','De Maas','De Amstel','De Schelde']},
+  {c:'🗺️ Landen',q:'Wat is het grootste land ter wereld?',a:'Rusland',o:['Canada','Rusland','China','De Verenigde Staten']},
+  {c:'🗺️ Landen',q:'Welk land heeft de meeste inwoners?',a:'India',o:['China','India','De Verenigde Staten','Brazilië']},
+  {c:'🗺️ Landen',q:'Welk land is het kleinste van Europa?',a:'Vaticaanstad',o:['Monaco','San Marino','Vaticaanstad','Liechtenstein']},
+  {c:'🗺️ Landen',q:'Op welk continent ligt Antarctica?',a:'Het is zelf een continent',o:['Het is zelf een continent','Azië','Australië','Het behoort bij Afrika']},
+];
+
+const TOTAL=10,BKEY='aardrijkskunde_best';
+const shuffle=a=>[...a].map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(p=>p[1]);
+const $=id=>document.getElementById(id);
+
+let best=0;try{best=parseInt(localStorage.getItem(BKEY)||'0')||0;}catch(e){}
+let queue=[],idx=0,score=0,streak=0,cur=null,answered=false;
+
+function showBest(){$('bestEl').textContent=best>0?'🏅 Beste: '+best+' / '+TOTAL:'';}showBest();
+
+function buildLevelbar(){
+  const b=$('levelbar');b.innerHTML='';
+  for(let i=0;i<TOTAL;i++){const d=document.createElement('div');d.className='dot'+(i<idx?' done':i===idx?' active':'');b.appendChild(d);}
+}
+
+function render(){
+  answered=false;cur=queue[idx];buildLevelbar();
+  $('feedback').textContent='';$('feedback').className='feedback';
+  $('catEl').textContent=cur.c;$('qEl').textContent=cur.q;
+  const o=$('opts');o.innerHTML='';
+  shuffle([...cur.o]).forEach(t=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=t;
+    b.onclick=()=>answer(b,t);o.appendChild(b);
+  });
+}
+
+function answer(btn,val){
+  if(answered)return;answered=true;
+  const fb=$('feedback');
+  [...$('opts').children].forEach(b=>{b.disabled=true;if(b.textContent===cur.a)b.classList.add('good');});
+  if(val===cur.a){score++;streak++;$('score').textContent=score;$('streak').textContent=streak;
+    fb.className='feedback good';fb.textContent=(streak>=3?'🔥 ':'✅ ')+['Goed zo!','Slim!','Correct!','Top!'][Math.floor(Math.random()*4)];}
+  else{streak=0;$('streak').textContent=0;btn.classList.add('bad');
+    fb.className='feedback bad';fb.textContent='❌ Het was: '+cur.a;}
+  idx++;buildLevelbar();
+  setTimeout(()=>{if(idx>=TOTAL)endGame();else render();},1300);
+}
+
+function startGame(){
+  queue=shuffle([...BANK]).slice(0,TOTAL);idx=0;score=0;streak=0;
+  $('score').textContent=0;$('streak').textContent=0;
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');$('playScreen').classList.remove('hidden-el');
+  render();
+}
+
+function endGame(){
+  $('playScreen').classList.add('hidden-el');$('endScreen').classList.remove('hidden-el');
+  let rec=false;if(score>best){best=score;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}showBest();
+  $('endText').innerHTML='Je had <b>'+score+' van de '+TOTAL+'</b> goed!'+(rec&&score>0?' 🏅 record!':'');
+  $('endEmoji').textContent=score===TOTAL?'🏆':(score>=7?'🎉':'💪');
+  $('endTitle').textContent=score===TOTAL?'Geograaf!':(score>=7?'Goed gedaan!':'Blijf leren!');
+}
+
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tic-Tac-Toe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#db2777;--violet-dark:#be185d;}
+  .top{width:100%;max-width:440px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:440px;border-radius:28px;padding:22px 20px 24px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);margin-bottom:4px;}
+  .sub{color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:10px;}
+  .diff-row{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+  .dsel{font-family:'Fredoka',sans-serif;font-size:.9rem;font-weight:700;color:var(--ink);background:var(--surface);border:none;border-radius:10px;padding:7px 14px;cursor:pointer;}
+  .dsel.active{background:var(--violet);color:#fff;}
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:300px;margin:0 auto 16px;}
+  .cell{background:var(--surface);border-radius:16px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:3rem;font-weight:700;cursor:pointer;box-shadow:0 5px 0 var(--surface2);transition:background .1s,transform .06s;}
+  .cell:hover:not(.taken){background:#e0e7ff;transform:scale(1.04);}
+  .cell.taken{cursor:default;}
+  .cell.x{color:var(--violet-dark);}
+  .cell.o{color:#ea580c;}
+  .cell.win{background:#bbf7d0;box-shadow:0 5px 0 #86efac;}
+  .status{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.2rem;color:var(--ink);min-height:30px;margin-bottom:12px;}
+  .score-row{display:flex;gap:12px;justify-content:center;margin-bottom:12px;}
+  .score-block{background:var(--surface);border-radius:14px;padding:8px 16px;text-align:center;}
+  .score-block .lbl{font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);font-weight:800;}
+  .score-block .val{font-family:'Fredoka',sans-serif;font-size:1.6rem;font-weight:700;}
+  .score-block.wins .val{color:var(--good);}
+  .score-block.losses .val{color:var(--bad);}
+  .overlay{position:absolute;inset:22px;background:rgba(255,248,238,.96);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:340px;line-height:1.5;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Jij</span><span class="val" id="pSymbol">✕</span></div>
+  <div class="pill"><span class="lbl">CPU</span><span class="val" id="cSymbol">○</span></div>
+</div>
+<div class="card">
+  <h1>❌ Tic-Tac-Toe</h1>
+  <p class="sub">Zet drie op een rij voor de computer dat doet!</p>
+
+  <div class="diff-row">
+    <button class="dsel active" id="dEasy">Makkelijk</button>
+    <button class="dsel" id="dMedium">Gemiddeld</button>
+    <button class="dsel" id="dHard">Moeilijk</button>
+  </div>
+
+  <div class="score-row">
+    <div class="score-block wins"><div class="lbl">Gewonnen</div><div class="val" id="wins">0</div></div>
+    <div class="score-block"><div class="lbl">Gelijk</div><div class="val" id="draws">0</div></div>
+    <div class="score-block losses"><div class="lbl">Verloren</div><div class="val" id="losses">0</div></div>
+  </div>
+
+  <div class="status" id="status">Klik een vakje om te beginnen!</div>
+  <div class="board" id="board"></div>
+  <button class="bigbtn ghostbtn" id="newBtn">Nieuw spel 🔁</button>
+
+  <div class="overlay" id="startScreen">
+    <h2>❌ Tic-Tac-Toe</h2>
+    <p>Jij bent <b>✕</b>. Zet drie op een rij — horizontaal, verticaal of diagonaal. Kies de moeilijkheidsgraad hierboven.</p>
+    <button class="bigbtn" id="startBtn">Spelen 🚀</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">Jij = ✕ · CPU = ○</p>
+
+<script>
+const LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const $=id=>document.getElementById(id);
+let board=Array(9).fill(null),wins=0,draws=0,losses=0,diff='easy',gameOver=false,playerTurn=true;
+
+function startGame(){
+  board=Array(9).fill(null);gameOver=false;playerTurn=true;
+  $('status').textContent='Jouw beurt!';
+  $('startScreen').classList.add('hidden-el');
+  renderBoard();
+}
+
+function renderBoard(winLine=null){
+  const el=$('board');el.innerHTML='';
+  board.forEach((v,i)=>{
+    const d=document.createElement('div');
+    d.className='cell'+(v?' taken':'')+(v==='X'?' x':v==='O'?' o':'');
+    if(winLine&&winLine.includes(i))d.classList.add('win');
+    d.textContent=v==='X'?'✕':v==='O'?'○':'';
+    if(!v&&!gameOver&&playerTurn)d.onclick=()=>playerMove(i);
+    el.appendChild(d);
+  });
+}
+
+function playerMove(i){
+  if(board[i]||gameOver||!playerTurn)return;
+  board[i]='X';playerTurn=false;renderBoard();
+  const res=checkWin('X');
+  if(res){wins++;$('wins').textContent=wins;$('status').textContent='🏆 Jij wint!';gameOver=true;renderBoard(res);return;}
+  if(board.every(v=>v)){draws++;$('draws').textContent=draws;$('status').textContent='🤝 Gelijkspel!';gameOver=true;renderBoard();return;}
+  $('status').textContent='CPU denkt na...';
+  setTimeout(cpuMove,400);
+}
+
+function cpuMove(){
+  const idx=getBestMove();
+  board[idx]='O';renderBoard();
+  const res=checkWin('O');
+  if(res){losses++;$('losses').textContent=losses;$('status').textContent='😢 CPU wint!';gameOver=true;renderBoard(res);return;}
+  if(board.every(v=>v)){draws++;$('draws').textContent=draws;$('status').textContent='🤝 Gelijkspel!';gameOver=true;renderBoard();return;}
+  playerTurn=true;$('status').textContent='Jouw beurt!';renderBoard();
+}
+
+function checkWin(player){
+  for(const line of LINES){if(line.every(i=>board[i]===player))return line;}
+  return null;
+}
+
+function getEmpty(){return board.map((v,i)=>v?null:i).filter(i=>i!==null);}
+
+function getBestMove(){
+  if(diff==='easy'){
+    // 30% optimal, 70% random
+    if(Math.random()<0.3)return minimax([...board],'O').idx;
+    const e=getEmpty();return e[Math.floor(Math.random()*e.length)];
+  }
+  if(diff==='medium'){
+    // First: win if possible. Second: block. Else random.
+    const win=findImmediate('O');if(win!==null)return win;
+    const block=findImmediate('X');if(block!==null)return block;
+    const e=getEmpty();return e[Math.floor(Math.random()*e.length)];
+  }
+  // Hard: full minimax
+  return minimax([...board],'O').idx;
+}
+
+function findImmediate(player){
+  for(const line of LINES){
+    const vals=line.map(i=>board[i]);
+    if(vals.filter(v=>v===player).length===2&&vals.includes(null)){
+      return line[vals.indexOf(null)];
+    }
+  }
+  return null;
+}
+
+function minimax(b,player){
+  const opp=player==='O'?'X':'O';
+  const winO=LINES.some(l=>l.every(i=>b[i]==='O'));
+  const winX=LINES.some(l=>l.every(i=>b[i]==='X'));
+  if(winO)return {score:10};
+  if(winX)return {score:-10};
+  const empty=b.map((v,i)=>v?null:i).filter(i=>i!==null);
+  if(!empty.length)return {score:0};
+  const moves=[];
+  for(const i of empty){
+    b[i]=player;
+    const res=minimax(b,opp);
+    moves.push({idx:i,score:res.score});
+    b[i]=null;
+  }
+  if(player==='O')return moves.reduce((a,c)=>c.score>a.score?c:a);
+  return moves.reduce((a,c)=>c.score<a.score?c:a);
+}
+
+// Difficulty buttons
+['easy','medium','hard'].forEach(d=>{
+  $('d'+d.charAt(0).toUpperCase()+d.slice(1)).onclick=()=>{
+    diff=d;
+    ['easy','medium','hard'].forEach(x=>$('d'+x.charAt(0).toUpperCase()+x.slice(1)).classList.remove('active'));
+    $('d'+d.charAt(0).toUpperCase()+d.slice(1)).classList.add('active');
+    startGame();
+  };
+});
+
+$('startBtn').onclick=startGame;$('newBtn').onclick=startGame;
+renderBoard();
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Darts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#e84545;--violet-dark:#b83030;}
+  .top{width:100%;max-width:500px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:500px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:10px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;cursor:crosshair;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:380px;line-height:1.5;}
+  .darts-strip{display:flex;justify-content:center;gap:6px;margin-top:8px;}
+  .dstr{font-size:1.4rem;opacity:.22;transition:opacity .2s;}
+  .dstr.used{opacity:1;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Ronde</span><span class="val" id="roundPill">1/3</span></div>
+  <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+  <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">0</span></div>
+</div>
+<div class="card">
+  <h1>🎯 Darts</h1>
+  <p class="sub">Klik of tik op het juiste moment — gooi de pijl naar de roos!</p>
+  <canvas id="cv" width="480" height="480"></canvas>
+  <div class="darts-strip" id="strip"></div>
+  <div class="overlay" id="startScreen">
+    <h2>🎯 Darts</h2>
+    <p>Het dradenkruis beweegt vanzelf. Klik of tik op het goede moment om te gooien.<br>Je hebt <b>9 pijlen</b> in 3 rondes. Roos = 50 punten!</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="endScreen">
+    <h2 id="endTitle">Klaar!</h2>
+    <p id="endMsg"></p>
+    <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">3 rondes × 3 pijlen · max. 501 punten</p>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=480,H=480,CX=240,CY=240;
+const BKEY='darts_best';
+const SECTS=[20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
+const RB=18,RB2=38,R3I=92,R3O=108,R2I=145,R2O=162,RBD=173;
+const SL=Math.PI*2/20,OFF=-Math.PI/2-SL/2;
+const $=id=>document.getElementById(id);
+
+let best=0;try{best=parseInt(localStorage.getItem(BKEY)||'0')||0;}catch(e){}
+$('best').textContent=best;
+
+let score=0,round=1,left=3,thrown=[],phase='idle',t=0,cx=CX,cy=CY,tx=CX,ty=CY;
+
+function buildStrip(){
+  const s=$('strip');s.innerHTML='';
+  const used=(round-1)*3+(3-left);
+  for(let i=0;i<9;i++){
+    const sp=document.createElement('span');
+    sp.className='dstr'+(i<used?' used':'');
+    sp.textContent='🎯';s.appendChild(sp);
+  }
+}
+
+function startGame(){
+  score=0;round=1;left=3;thrown=[];t=0;cx=CX;cy=CY;
+  $('score').textContent=0;$('roundPill').textContent='1/3';
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');
+  buildStrip();phase='play';
+}
+
+function throwDart(){
+  if(phase!=='play')return;
+  const dx=cx-CX,dy=cy-CY,r=Math.hypot(dx,dy);
+  let pts=0;
+  if(r<RB) pts=50;
+  else if(r<RB2) pts=25;
+  else if(r<=RBD){
+    const ang=(Math.atan2(dy,dx)-OFF+Math.PI*4)%(Math.PI*2);
+    const idx=Math.floor(ang/SL)%20;
+    let mult=1;
+    if(r>=R3I&&r<=R3O)mult=3;
+    if(r>=R2I&&r<=R2O)mult=2;
+    pts=SECTS[idx]*mult;
+  }
+  score+=pts;$('score').textContent=score;
+  thrown.push({x:cx,y:cy,pts,age:0});
+  left--;buildStrip();
+  if(left<=0){
+    if(round>=3){phase='show';setTimeout(endGame,1400);}
+    else{round++;left=3;$('roundPill').textContent=round+'/3';buildStrip();}
+  }
+}
+
+function endGame(){
+  phase='idle';
+  let rec=false;if(score>best){best=score;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}
+  $('best').textContent=best;
+  $('endTitle').textContent=score>=350?'🏆 Dartskampioen!':(score>=200?'💪 Goed gegooid!':'Goed geoefend!');
+  $('endMsg').innerHTML='Totaalscore: <b>'+score+' punten</b>'+(rec?' 🏅 Nieuw record!':'');
+  $('endScreen').classList.remove('hidden-el');
+}
+
+function drawBoard(){
+  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(CX,CY,RBD+10,0,Math.PI*2);ctx.fill();
+  for(let i=0;i<20;i++){
+    const a1=OFF+i*SL,a2=a1+SL,ev=i%2===0;
+    ctx.fillStyle=ev?'#1c1c1c':'#f0e8d0';
+    ctx.beginPath();ctx.moveTo(CX,CY);ctx.arc(CX,CY,RBD,a1,a2);ctx.closePath();ctx.fill();
+    const rc=ev?'#b22222':'#228844';
+    ctx.fillStyle=rc;
+    ctx.beginPath();ctx.arc(CX,CY,R3O,a1,a2);ctx.arc(CX,CY,R3I,a2,a1,true);ctx.closePath();ctx.fill();
+    ctx.fillStyle=rc;
+    ctx.beginPath();ctx.arc(CX,CY,R2O,a1,a2);ctx.arc(CX,CY,R2I,a2,a1,true);ctx.closePath();ctx.fill();
+  }
+  ctx.strokeStyle='rgba(90,90,90,.6)';ctx.lineWidth=1;
+  for(let i=0;i<20;i++){const a=OFF+i*SL;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(CX+Math.cos(a)*RBD,CY+Math.sin(a)*RBD);ctx.stroke();}
+  ctx.strokeStyle='rgba(90,90,90,.4)';
+  [RB2,R3I,R3O,R2I,R2O,RBD].forEach(r=>{ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.stroke();});
+  for(let i=0;i<20;i++){
+    const a=OFF+i*SL+SL/2;
+    ctx.fillStyle='#fff';ctx.font='bold 13px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(SECTS[i],CX+Math.cos(a)*(R2O+14),CY+Math.sin(a)*(R2O+14));
+  }
+  ctx.fillStyle='#228844';ctx.beginPath();ctx.arc(CX,CY,RB2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#b22222';ctx.beginPath();ctx.arc(CX,CY,RB,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 10px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('50',CX,CY);ctx.fillText('25',CX,CY+28);
+}
+
+function drawThrown(){
+  for(const d of thrown){
+    d.age++;
+    ctx.fillStyle='#ffcc00';ctx.beginPath();ctx.arc(d.x,d.y,5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#cc8800';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(d.x,d.y,5,0,Math.PI*2);ctx.stroke();
+    if(d.age<100&&d.pts>0){
+      ctx.font='bold 14px Fredoka,sans-serif';ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillText('+'+d.pts,d.x,d.y-9);
+    }
+  }
+}
+
+function drawCross(){
+  if(phase!=='play')return;
+  ctx.strokeStyle='rgba(255,60,60,.9)';ctx.lineWidth=2;ctx.setLineDash([5,4]);
+  ctx.beginPath();ctx.moveTo(cx-18,cy);ctx.lineTo(cx+18,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-18);ctx.lineTo(cx,cy+18);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(255,60,60,.55)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.stroke();
+}
+
+function step(){
+  t++;
+  tx=CX+Math.sin(t*.04)*60+Math.sin(t*.073+1.2)*28+Math.sin(t*.013+2.4)*20;
+  ty=CY+Math.cos(t*.05)*58+Math.cos(t*.089+.7)*26+Math.cos(t*.017+1.1)*18;
+  cx+=(tx-cx)*.11;cy+=(ty-cy)*.11;
+}
+
+function loop(){
+  if(phase==='play')step();
+  ctx.fillStyle='#0a0a0a';ctx.fillRect(0,0,W,H);
+  drawBoard();drawThrown();drawCross();
+  requestAnimationFrame(loop);
+}
+
+cv.addEventListener('pointerdown',throwDart);
+document.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();throwDart();}});
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+loop();
+</script>
+</body>
+</html>

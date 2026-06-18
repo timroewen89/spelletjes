@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sudoku</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#6366f1;--violet-dark:#4f46e5;}
+  .top{width:100%;max-width:400px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:400px;border-radius:28px;padding:22px 20px 24px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);margin-bottom:4px;}
+  .sub{color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:14px;}
+  .puzzle-sel{display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+  .psel{font-family:'Fredoka',sans-serif;font-size:.9rem;font-weight:600;color:var(--ink);background:var(--surface);border:none;border-radius:10px;padding:7px 13px;cursor:pointer;transition:background .1s;}
+  .psel.active{background:var(--violet);color:#fff;}
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;border-radius:14px;padding:4px;margin:0 auto 14px;max-width:348px;}
+  .cell{background:var(--surface);border-radius:8px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:1.5rem;font-weight:700;color:var(--ink);cursor:pointer;user-select:none;transition:background .1s,color .1s;}
+  .cell.given{color:var(--violet-dark);cursor:default;background:#ede9fe;}
+  .cell.selected{background:#c7d2fe!important;}
+  .cell.err{background:#fee2e2!important;color:#dc2626!important;}
+  .cell.same-num{background:#e0e7ff;}
+  .sep-r{margin-right:3px;}
+  .sep-b{margin-bottom:3px;}
+  .numpad{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+  .nkey{font-family:'Fredoka',sans-serif;font-size:1.4rem;font-weight:700;color:var(--ink);background:var(--surface);border:none;border-radius:12px;width:44px;height:44px;cursor:pointer;box-shadow:0 4px 0 var(--surface2);transition:transform .06s;}
+  .nkey:active{transform:translateY(2px);box-shadow:0 2px 0 var(--surface2);}
+  .nkey.erase{font-size:1rem;color:var(--bad);}
+  .btns{display:flex;gap:10px;justify-content:center;}
+  .feedback{min-height:26px;font-family:'Fredoka',sans-serif;font-size:1rem;font-weight:700;margin-top:10px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .overlay{position:absolute;inset:22px;background:rgba(255,248,238,.96);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:340px;line-height:1.5;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Fouten</span><span class="val" id="errPill">0</span></div>
+  <div class="pill"><span class="lbl">Vrij</span><span class="val" id="freePill">—</span></div>
+</div>
+<div class="card">
+  <h1>🔢 Sudoku</h1>
+  <p class="sub">Vul elke rij, kolom en 2×3 vak in met 1 t/m 6.</p>
+  <div class="puzzle-sel" id="puzzleSel"></div>
+  <div class="grid" id="grid"></div>
+  <div class="numpad" id="numpad"></div>
+  <div class="btns">
+    <button class="bigbtn ghostbtn" id="hintBtn">Hint 💡</button>
+    <button class="bigbtn" id="checkBtn">Controleer ✅</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div class="overlay" id="startScreen">
+    <h2>🔢 Sudoku</h2>
+    <p>Vul elke rij, kolom en 2×3 vak in met de cijfers <b>1 tot en met 6</b>. Geen enkel getal mag twee keer voorkomen!</p>
+    <button class="bigbtn" id="startBtn">Spelen 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="winScreen">
+    <h2>🏆 Opgelost!</h2>
+    <p id="winMsg"></p>
+    <button class="bigbtn" id="nextBtn">Volgende ▶</button>
+    <button class="bigbtn ghostbtn" id="closeWinBtn">Doorgaan</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">Klik een cel, typ dan een cijfer of gebruik de knopjes</p>
+
+<script>
+// All solutions are valid 6x6 sudoku grids (verified).
+// Box layout: 2 rows × 3 cols
+// Solution A (base):
+const SA=[[1,2,3,4,5,6],[4,5,6,1,2,3],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
+// Solution B (swap rows 0↔1 within top band):
+const SB=[[4,5,6,1,2,3],[1,2,3,4,5,6],[2,3,4,5,6,1],[5,6,1,2,3,4],[3,4,5,6,1,2],[6,1,2,3,4,5]];
+// Solution C (swap mid band rows + bottom band rows):
+const SC=[[1,2,3,4,5,6],[4,5,6,1,2,3],[5,6,1,2,3,4],[2,3,4,5,6,1],[6,1,2,3,4,5],[3,4,5,6,1,2]];
+
+const GAMES=[
+  {label:'1 ⭐',  sol:SA, mask:[[0,1,0,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1],[1,0,1,0,1,0],[0,1,0,1,0,1],[1,0,1,0,1,0]]},
+  {label:'2 ⭐',  sol:SB, mask:[[1,0,0,1,0,0],[0,1,0,0,1,0],[0,0,1,0,0,1],[1,0,0,1,0,0],[0,1,0,0,1,0],[0,0,1,0,0,1]]},
+  {label:'3 ⭐⭐', sol:SC, mask:[[1,0,0,0,1,0],[0,0,1,0,0,1],[1,0,0,1,0,0],[0,1,0,0,0,1],[0,0,1,0,1,0],[1,0,0,1,0,0]]},
+  {label:'4 ⭐⭐', sol:SA, mask:[[0,0,1,0,0,0],[1,0,0,0,0,1],[0,1,0,1,0,0],[0,0,0,0,1,0],[0,1,0,0,0,1],[1,0,0,1,0,0]]},
+];
+
+const $=id=>document.getElementById(id);
+let curGame=0,board=[],errors=0,selected=null;
+
+function loadGame(idx){
+  curGame=idx!=null?idx:curGame;
+  const g=GAMES[curGame];
+  board=g.sol.map((row,r)=>row.map((v,c)=>{
+    const show=!!g.mask[r][c];
+    return {v:show?v:0,given:show,err:false};
+  }));
+  errors=0;selected=null;
+  $('errPill').textContent=0;
+  updateFreeCount();
+  $('feedback').textContent='';$('feedback').className='feedback';
+  $('winScreen').classList.add('hidden-el');
+  buildPuzzleSel();renderGrid();
+}
+
+function updateFreeCount(){
+  const free=board.flat().filter(c=>!c.given&&!c.v).length;
+  $('freePill').textContent=free;
+}
+
+function buildPuzzleSel(){
+  const sel=$('puzzleSel');sel.innerHTML='';
+  GAMES.forEach((g,i)=>{
+    const b=document.createElement('button');b.className='psel'+(i===curGame?' active':'');
+    b.textContent=g.label;b.onclick=()=>loadGame(i);sel.appendChild(b);
+  });
+}
+
+function renderGrid(){
+  const gEl=$('grid');gEl.innerHTML='';
+  const selV=selected?board[selected[0]][selected[1]].v:null;
+  board.forEach((row,r)=>{
+    row.forEach((cell,c)=>{
+      const d=document.createElement('div');
+      let cls='cell';
+      if(cell.given)cls+=' given';
+      if(selected&&selected[0]===r&&selected[1]===c)cls+=' selected';
+      else if(selV&&cell.v===selV&&!selected||false)cls+=' same-num';
+      if(cell.err)cls+=' err';
+      if(c===2)d.style.marginRight='4px';
+      if(r===1||r===3)d.style.marginBottom='4px';
+      d.className=cls;
+      d.textContent=cell.v||'';
+      if(!cell.given)d.onclick=()=>{selected=[r,c];renderGrid();};
+      gEl.appendChild(d);
+    });
+  });
+}
+
+function inputNum(n){
+  if(!selected)return;
+  const [r,c]=selected;
+  if(board[r][c].given)return;
+  board[r][c].v=n;board[r][c].err=false;
+  $('feedback').textContent='';
+  updateFreeCount();renderGrid();
+  if(n>0)checkAutoWin();
+}
+
+function checkAutoWin(){
+  const g=GAMES[curGame];
+  const allCorrect=board.every((row,r)=>row.every((cell,c)=>cell.given||cell.v===g.sol[r][c]));
+  const allFilled=board.every(row=>row.every(cell=>cell.v>0));
+  if(allFilled&&allCorrect)showWin();
+}
+
+function checkErrors(){
+  const g=GAMES[curGame];
+  let errCount=0;
+  board.forEach((row,r)=>row.forEach((cell,c)=>{
+    cell.err=!!(cell.v&&cell.v!==g.sol[r][c]);
+    if(cell.err)errCount++;
+  }));
+  if(errCount>0){errors+=errCount;$('errPill').textContent=errors;$('feedback').className='feedback bad';$('feedback').textContent='❌ '+errCount+' fout'+(errCount>1?'en':'')+' gevonden!';}
+  else if(board.flat().every(c=>c.v)){$('feedback').className='feedback good';$('feedback').textContent='✅ Alles is correct!';showWin();}
+  else{$('feedback').className='feedback good';$('feedback').textContent='✅ Alles wat ingevuld is klopt!';}
+  renderGrid();
+}
+
+function giveHint(){
+  if(!selected)return;
+  const [r,c]=selected;
+  if(board[r][c].given||board[r][c].v)return;
+  board[r][c].v=GAMES[curGame].sol[r][c];board[r][c].err=false;
+  $('feedback').className='feedback good';$('feedback').textContent='💡 Hint gegeven!';
+  updateFreeCount();renderGrid();checkAutoWin();
+}
+
+function showWin(){
+  $('winMsg').innerHTML='Puzzle <b>'+GAMES[curGame].label+'</b> is opgelost! '+($('errPill').textContent==='0'?'Geen fouten! 🏆':'');
+  setTimeout(()=>$('winScreen').classList.remove('hidden-el'),300);
+}
+
+function buildNumpad(){
+  const np=$('numpad');np.innerHTML='';
+  for(let n=1;n<=6;n++){const b=document.createElement('button');b.className='nkey';b.textContent=n;b.onclick=()=>inputNum(n);np.appendChild(b);}
+  const d=document.createElement('button');d.className='nkey erase';d.textContent='✕';d.onclick=()=>inputNum(0);np.appendChild(d);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key>='1'&&e.key<='6'){e.preventDefault();inputNum(parseInt(e.key));}
+  else if(e.key==='Backspace'||e.key==='Delete'){inputNum(0);}
+  else if(e.key==='ArrowUp'&&selected&&selected[0]>0){selected=[selected[0]-1,selected[1]];renderGrid();}
+  else if(e.key==='ArrowDown'&&selected&&selected[0]<5){selected=[selected[0]+1,selected[1]];renderGrid();}
+  else if(e.key==='ArrowLeft'&&selected&&selected[1]>0){selected=[selected[0],selected[1]-1];renderGrid();}
+  else if(e.key==='ArrowRight'&&selected&&selected[1]<5){selected=[selected[0],selected[1]+1];renderGrid();}
+});
+
+$('startBtn').onclick=()=>{$('startScreen').classList.add('hidden-el');loadGame(0);};
+$('checkBtn').onclick=checkErrors;
+$('hintBtn').onclick=giveHint;
+$('nextBtn').onclick=()=>loadGame((curGame+1)%GAMES.length);
+$('closeWinBtn').onclick=()=>$('winScreen').classList.add('hidden-el');
+
+buildNumpad();
+loadGame(0);
+</script>
+</body>
+</html>
