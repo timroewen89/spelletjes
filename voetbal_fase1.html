@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5 tegen 5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --turf-a:#338a55;       /* gras licht */
+    --turf-b:#2e7d4d;       /* gras donker (maaibanen) */
+    --chalk:#eef6f0;        /* belijning */
+    --team-a:#3b82f6;       /* thuisteam, helder blauw */
+    --team-b:#ef5a3c;       /* uitteam, warm rood-oranje */
+    --ball:#f6f3ea;         /* warm wit */
+    --accent:#ffce5c;       /* signatuur: gouden spotlight op jouw speler */
+    --ink:#2B2D6B;
+    --ink-soft:#6A6CA8;
+    --cream:#FFF8EE;
+    --violet:#3b82f6;
+    --violet-dark:#2667cc;
+    --glass:rgba(13,21,25,.55);
+    --night:#070d10;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(120% 120% at 50% 0%, #FFFDF8 0%, var(--cream) 55%, #FBEFDD 100%);
+    color:var(--ink);
+    font-family:'Nunito',system-ui,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100%;gap:14px;padding:18px;
+  }
+  .board{
+    display:flex;align-items:center;gap:22px;
+    letter-spacing:.06em;
+  }
+  .board .team{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;text-transform:uppercase}
+  .dot{width:13px;height:13px;border-radius:50%}
+  .score{
+    font-family:'Fredoka',sans-serif;font-size:40px;font-weight:700;line-height:1;
+    font-variant-numeric:tabular-nums;letter-spacing:.06em;color:var(--ink);
+    padding:6px 22px;border-radius:16px;
+    background:#fff;
+    box-shadow:0 8px 0 rgba(43,45,107,.10);
+  }
+  .clock{
+    font-size:15px;font-weight:800;letter-spacing:.18em;color:var(--ink-soft);
+    font-variant-numeric:tabular-nums;
+  }
+  .muteBtn{
+    position:absolute;top:10px;right:10px;z-index:5;
+    font-family:'Fredoka',sans-serif;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--ink);background:#fff;border:none;
+    border-radius:12px;padding:7px 12px;cursor:pointer;box-shadow:0 4px 0 rgba(43,45,107,.12);
+  }
+  .muteBtn.off{opacity:.55;text-decoration:line-through}
+  .stage{position:relative;width:min(96vw,960px)}
+  canvas{
+    width:100%;height:auto;display:block;border-radius:16px;
+    box-shadow:0 22px 60px rgba(0,0,0,.6), inset 0 0 0 1px #0a120d;
+  }
+  .overlay{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;text-align:center;color:var(--ink);
+    background:rgba(255,248,238,.94);border-radius:16px;backdrop-filter:blur(3px);padding:18px;
+  }
+  .overlay h1{margin:0;font-family:'Fredoka',sans-serif;font-size:32px;letter-spacing:.01em;font-weight:700;color:var(--violet-dark)}
+  .overlay p{margin:0;max-width:420px;line-height:1.5;font-size:14px;font-weight:700;color:var(--ink-soft)}
+  .keys{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+  kbd{
+    font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;background:#F3F1FB;
+    border-radius:8px;padding:6px 10px;color:var(--ink);
+  }
+  button.play{
+    margin-top:6px;font-family:'Fredoka',sans-serif;font-weight:500;letter-spacing:.03em;
+    font-size:16px;color:#fff;background:var(--violet);
+    border:0;border-radius:14px;padding:13px 30px;cursor:pointer;
+    box-shadow:0 6px 0 var(--violet-dark);
+  }
+  button.play:active{transform:translateY(3px);box-shadow:0 3px 0 var(--violet-dark)}
+  .hint{font-size:12px;color:var(--ink-soft);font-weight:700;letter-spacing:.02em}
+
+  /* ---- touch-besturing (alleen zichtbaar op touch-apparaten, tijdens spel) ---- */
+  .touch{position:absolute;inset:0;pointer-events:none;display:none}
+  @media (pointer:coarse){ body.playing .touch{display:block} }
+  .stick{
+    position:absolute;left:4%;bottom:6%;width:clamp(84px,24vw,128px);aspect-ratio:1;
+    border-radius:50%;background:rgba(8,14,11,.32);border:2px solid rgba(233,242,234,.30);
+    pointer-events:auto;touch-action:none;display:flex;align-items:center;justify-content:center;
+  }
+  .knob{
+    width:46%;height:46%;border-radius:50%;background:rgba(255,206,92,.9);
+    box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;
+  }
+  .kickbtn{
+    position:absolute;right:5%;bottom:8%;width:clamp(70px,18vw,104px);aspect-ratio:1;
+    border-radius:50%;background:var(--team-a);color:#fff;border:2px solid rgba(255,255,255,.35);
+    font-family:inherit;font-weight:700;font-size:14px;text-transform:uppercase;letter-spacing:.05em;
+    pointer-events:auto;touch-action:none;box-shadow:0 6px 0 rgba(0,0,0,.35);
+  }
+  .kickbtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  .slidebtn{
+    position:absolute;right:calc(5% + clamp(82px,20vw,120px));bottom:8%;
+    width:clamp(58px,15vw,86px);aspect-ratio:1;border-radius:50%;
+    background:rgba(59,130,246,.85);color:#fff;border:2px solid rgba(255,255,255,.30);
+    font-family:inherit;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
+    pointer-events:auto;touch-action:none;box-shadow:0 6px 0 rgba(0,0,0,.35);
+  }
+  .slidebtn:active{transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  .hidden{display:none}
+  .menu-link{
+    position:fixed;top:14px;left:14px;z-index:10;
+    font-family:'Fredoka',sans-serif;font-size:.95rem;font-weight:500;
+    color:var(--ink);background:#fff;border:none;
+    border-radius:14px;padding:8px 14px;text-decoration:none;box-shadow:0 5px 0 rgba(43,45,107,.10);
+  }
+  .menu-link:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(43,45,107,.10)}
+</style>
+</head>
+<body>
+
+  <a class="menu-link" href="index.html">← Menu</a>
+  <div class="clock" id="clock">2:00</div>
+  <div class="board">
+    <div class="team"><span class="dot" style="background:var(--team-a)"></span>Thuis</div>
+    <div class="score"><span id="scoreA">0</span> : <span id="scoreB">0</span></div>
+    <div class="team">Uit<span class="dot" style="background:var(--team-b)"></span></div>
+  </div>
+
+  <div class="stage">
+    <button class="muteBtn" id="muteBtn">Geluid</button>
+    <canvas id="game" width="960" height="600"></canvas>
+    <div class="overlay" id="startScreen">
+      <h1>5 tegen 5</h1>
+      <p>Je speelt de speler met de gouden gloed (dichtst bij de bal).
+         Tik om te passen, houd vast voor een schot, en gebruik de sliding om af te pakken.</p>
+      <div class="keys">
+        <kbd>W A S D</kbd><kbd>Spatie: tik = pass · vasthouden = schot</kbd><kbd>Shift = sliding</kbd>
+      </div>
+      <button class="play" id="playBtn">Aftrap</button>
+    </div>
+    <div class="touch">
+      <div class="stick" id="stickBase"><div class="knob" id="knob"></div></div>
+      <button class="slidebtn" id="slideBtn">Slide</button>
+      <button class="kickbtn" id="kickBtn">Trap</button>
+    </div>
+    <div class="overlay hidden" id="endScreen">
+      <h1 id="endTitle">Einde</h1>
+      <p id="endResult"></p>
+      <button class="play" id="againBtn">Opnieuw</button>
+    </div>
+  </div>
+  <div class="hint">Desktop: WASD + Spatie (tik = pass, vast = schot) + Shift (slide) &nbsp;·&nbsp; Mobiel: joystick + knoppen rechts</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   5 TEGEN 5 — FASE 1
+   Eén bestand, geen libraries. De kern bestaat uit:
+     1) constanten + veldafmetingen
+     2) entiteiten (speler, bal) en formaties
+     3) invoer (toetsenbord)
+     4) natuurkunde-stap met vaste timestep (stabiel, "realistisch" gevoel)
+     5) simpele AI
+     6) tekenen
+     7) gameloop
+   Tweak de // GEVOEL-constanten om de besturing naar smaak te zetten.
+   ========================================================================= */
+
+const cv  = document.getElementById("game");
+const ctx = cv.getContext("2d");
+const W = cv.width, H = cv.height;
+
+/* ---- veld ---- */
+const MARGIN = 42;
+const FL = MARGIN, FR = W - MARGIN, FT = MARGIN, FB = H - MARGIN; // veldgrenzen
+const FW = FR - FL, FH = FB - FT;
+const GOAL_H = 132;                       // breedte van het doel (verticaal)
+const GTOP = H/2 - GOAL_H/2;
+const GBOT = H/2 + GOAL_H/2;
+const BOX_W = 110, BOX_H = 250;           // strafschopgebied
+
+/* ---- natuurkunde (GEVOEL: hier sleutel je aan de besturing) ---- */
+const FIXED = 1/60;          // vaste natuurkunde-stap in seconden
+const ACCEL = 2600;          // versnelling speler (units/s^2)
+const P_DRAG = 0.90;         // wrijving speler per stap -> stoppen heeft "gewicht"
+const P_MAXV = 235;          // maximale snelheid speler
+const P_R = 11;              // straal speler
+const B_R = 7;               // straal bal
+const B_DRAG = 0.990;        // balwrijving -> bal rolt uit en vertraagt
+const B_MAXV = 680;          // maximale balsnelheid
+const KICK = 560;            // schotkracht
+const REST = 0.55;           // terugkaatsing tegen de boarding
+const KICK_RANGE = P_R + B_R + 16;
+
+/* ---- AI-afstemming (Fase 2): pas aan voor speelstijl ---- */
+const CTRL_DIST   = P_R + B_R + 10;   // binnen deze afstand "heeft" iemand de bal
+const SHOOT_RANGE = 235;              // vanaf hier probeert de AI te schieten
+const PRESS_DIST  = 74;               // tegenstander dichterbij dan dit = onder druk -> pass
+const SHAPE_SHIFT = 120;              // hoever het team-blok op-/afschuift bij aanval/verdediging
+
+/* ---- Balgevoel (Fase 3): laden, pass/schot-kracht, sliding ---- */
+const CHARGE_TIME = 0.85;   // seconden vasthouden voor een volledig opgeladen schot
+const PASS_MAX    = 0.25;   // lading onder deze drempel = pass (anders schot)
+const PASS_POWER  = 340;    // kracht van een ongerichte korte stoot
+const SHOT_MIN    = 380;    // schotkracht bij minimale lading
+const SHOT_MAX    = 740;    // schotkracht bij volle lading
+const SLIDE_SPEED = 380;    // beginsnelheid van de glijbeweging
+const SLIDE_TIME  = 0.45;   // duur van een sliding (seconden)
+const SLIDE_COOL  = 0.70;   // extra afkoeltijd erna
+const SLIDE_DRAG  = 0.965;  // minder wrijving tijdens glijden (glijdt verder door)
+
+/* ---- Wedstrijd & conditie (Fase 4) ---- */
+const MATCH_LEN    = 120;   // wedstrijdduur in seconden
+const SPRINT_MULT  = 1.40;  // snelheids-/versnellingsboost tijdens sprinten
+const STAM_DRAIN   = 6;     // seconden sprinten tot de conditie op is
+const STAM_RECOVER = 9;     // seconden om volledig te herstellen
+
+/* ---- toestand ---- */
+let players = [];
+let ball;
+let controlled = null;       // de speler die jij stuurt (team A, geen keeper)
+let score = { a:0, b:0 };
+let running = false;
+let freeze = 0;              // korte pauze na een doelpunt (seconden)
+let message = "";
+let acc = 0, last = 0;
+let flash = 0, flashTeam = "a";   // korte kleurflits bij een doelpunt
+let clock = MATCH_LEN, lastClockShown = -1, over = false;
+let stamina = 1;             // conditie van de bestuurde speler (0..1)
+let lastTouch = null;        // team dat de bal als laatste raakte (voor set-pieces)
+let muted = false, audioCtx = null, sfxCd = 0;
+
+/* ---- invoer ---- */
+const keys = Object.create(null);
+let kickHeld = false;       // trap-knop ingedrukt -> lading loopt op
+let charge = 0;             // 0..1 huidige trap-lading
+let fireKick = false;       // bij loslaten: voer pass/schot uit
+let slideQueued = false;    // sliding aangevraagd (edge)
+const touchVec = { x:0, y:0, active:false };   // joystick-uitvoer (-1..1)
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if ([" ","arrowup","arrowdown","arrowleft","arrowright"].includes(k)) e.preventDefault();
+  if (k === " "    && !keys[" "]){ kickHeld = true; charge = 0; }   // begin met laden
+  if (k === "f"    && !keys[k])    slideQueued = true;              // sliding
+  keys[k] = true;
+});
+addEventListener("keyup", e => {
+  const k = e.key.toLowerCase();
+  if (k === " " && kickHeld){ kickHeld = false; fireKick = true; }  // loslaten = trap
+  keys[k] = false;
+});
+
+/* =========================================================================
+   FORMATIES
+   relatieve posities (0..1) voor een team dat naar RECHTS aanvalt.
+   index 0 = keeper. Team B wordt gespiegeld (fx -> 1-fx).
+   ========================================================================= */
+const FORMATION = [
+  { fx:0.05, fy:0.50, role:"GK"  },
+  { fx:0.24, fy:0.30, role:"DEF" },
+  { fx:0.24, fy:0.70, role:"DEF" },
+  { fx:0.46, fy:0.50, role:"MID" },
+  { fx:0.64, fy:0.50, role:"FWD" },
+];
+
+function makePlayer(team, slot){
+  const f = FORMATION[slot];
+  const fx = team === "a" ? f.fx : 1 - f.fx;
+  const hx = FL + fx * FW;
+  const hy = FT + f.fy * FH;
+  return {
+    team, role:f.role, slot,
+    x:hx, y:hy, vx:0, vy:0, ax:0, ay:0,
+    hx, hy,                 // thuispositie (voor AI-terugkeer)
+    heading:{x: team==="a"?1:-1, y:0}, // kijkrichting, voor schieten in stilstand
+    kickCd:0, slideTimer:0, slideCd:0,
+  };
+}
+
+function resetPositions(){
+  players = [];
+  for (let s=0; s<5; s++) players.push(makePlayer("a", s));
+  for (let s=0; s<5; s++) players.push(makePlayer("b", s));
+  ball = { x:W/2, y:H/2, vx:0, vy:0, trail:[] };
+  controlled = null;
+}
+
+/* =========================================================================
+   HULPJES
+   ========================================================================= */
+const len = (x,y) => Math.hypot(x,y);
+function clampSpeed(o, max){
+  const s = len(o.vx,o.vy);
+  if (s > max){ o.vx = o.vx/s*max; o.vy = o.vy/s*max; }
+}
+// kies onder een team de veldspeler (geen keeper) die het dichtst bij de bal staat
+function nearestOutfield(team, exclude){
+  let best=null, bd=Infinity;
+  for (const p of players){
+    if (p.team!==team || p.role==="GK" || p===exclude) continue;
+    const d = len(ball.x-p.x, ball.y-p.y);
+    if (d<bd){ bd=d; best=p; }
+  }
+  return best;
+}
+// zet versnelling van speler richting een doelpunt (gebruikt door AI)
+function steerTo(p, tx, ty, scale=1){
+  const dx=tx-p.x, dy=ty-p.y, d=len(dx,dy)||1;
+  if (d < 5){ return; }
+  p.ax = dx/d*ACCEL*scale;
+  p.ay = dy/d*ACCEL*scale;
+}
+
+/* =========================================================================
+   NATUURKUNDE + LOGICA  (1 vaste stap)
+   ========================================================================= */
+function step(dt){
+  if (flash > 0) flash -= dt;          // doelpunt-flits laten uitdoven
+  if (sfxCd > 0) sfxCd -= dt;
+  if (over) return;                    // wedstrijd voorbij: niets meer simuleren
+
+  // wedstrijdklok (loopt altijd door)
+  clock -= dt;
+  const cs = Math.max(0, Math.ceil(clock));
+  if (cs !== lastClockShown){ lastClockShown = cs; clockEl.textContent = fmt(cs); }
+  if (clock <= 0){ clock = 0; endMatch(); return; }
+
+  let sprinting = false;
+  if (freeze > 0){ freeze -= dt; if (freeze<=0) message=""; return; }
+
+  // --- 1. kies de bestuurde speler (dichtst bij bal) met een beetje hysterese ---
+  const candidate = nearestOutfield("a", null);
+  if (!controlled) controlled = candidate;
+  else if (candidate && candidate !== controlled
+           && controlled.slideTimer<=0 && !kickHeld){   // niet wisselen tijdens slide/laden
+    const dc = len(ball.x-controlled.x, ball.y-controlled.y);
+    const dn = len(ball.x-candidate.x, ball.y-candidate.y);
+    if (dn < dc - 22) controlled = candidate; // pas wisselen als duidelijk dichterbij
+  }
+
+  // --- 2. invoer voor de bestuurde speler (toetsenbord + touch-joystick) ---
+  if (kickHeld) charge = Math.min(1, charge + dt / CHARGE_TIME);   // trap opladen
+  let ix=0, iy=0;
+  if (keys["w"]||keys["arrowup"])    iy-=1;
+  if (keys["s"]||keys["arrowdown"])  iy+=1;
+  if (keys["a"]||keys["arrowleft"])  ix-=1;
+  if (keys["d"]||keys["arrowright"]) ix+=1;
+  if (touchVec.active){ ix = touchVec.x; iy = touchVec.y; }   // joystick heeft voorrang
+  const moveLen = len(ix,iy);
+
+  // sprinten: Shift (desktop) of joystick (bijna) volledig indrukken; vreet conditie
+  const wantSprint = keys["shift"] || (touchVec.active && moveLen > 0.85);
+  sprinting = !!controlled && controlled.slideTimer<=0 && moveLen>0.1 && wantSprint && stamina>0.02;
+  stamina = sprinting ? Math.max(0, stamina - dt/STAM_DRAIN)
+                      : Math.min(1, stamina + dt/STAM_RECOVER);
+  const ac = sprinting ? ACCEL*SPRINT_MULT : ACCEL;
+
+  if (controlled && controlled.slideTimer<=0 && moveLen>0){
+    const m = Math.min(moveLen,1);            // analoge sterkte
+    controlled.ax = ix/moveLen*ac*m;
+    controlled.ay = iy/moveLen*ac*m;
+  }
+  // sliding starten (burst in kijkrichting)
+  if (slideQueued && controlled && controlled.slideTimer<=0 && controlled.slideCd<=0){
+    controlled.slideTimer = SLIDE_TIME;
+    controlled.slideCd    = SLIDE_TIME + SLIDE_COOL;
+    controlled.vx = controlled.heading.x * SLIDE_SPEED;
+    controlled.vy = controlled.heading.y * SLIDE_SPEED;
+  }
+  slideQueued = false;
+
+  // --- 3. AI: balbezit, rollen, positiespel, dekken, passen, schieten (Fase 2) ---
+  updateAI();
+
+  // --- 4. integreer spelers ---
+  for (const p of players){
+    const sliding = p.slideTimer>0;
+    p.vx += p.ax*dt;  p.vy += p.ay*dt;
+    const drag = sliding ? SLIDE_DRAG : P_DRAG;
+    p.vx *= drag;     p.vy *= drag;
+    const maxv = sliding ? SLIDE_SPEED
+               : (p===controlled && sprinting ? P_MAXV*SPRINT_MULT : P_MAXV);
+    clampSpeed(p, maxv);
+    p.x += p.vx*dt;   p.y += p.vy*dt;
+
+    // bewaar kijkrichting bij beweging (voor schieten vanuit stilstand)
+    const sp = len(p.vx,p.vy);
+    if (sp > 8){ p.heading.x = p.vx/sp; p.heading.y = p.vy/sp; }
+
+    // binnen het veld houden; keepers extra strak bij het doel
+    if (p.role === "GK"){
+      const gx = p.team==="a" ? FL : FR;
+      p.x = clampNum(p.x, gx-6, gx + (p.team==="a"? BOX_W*0.6 : 6));
+      if (p.team==="b") p.x = clampNum(p.x, FR - BOX_W*0.6, gx+6);
+      p.y = clampNum(p.y, GTOP-24, GBOT+24);
+    } else {
+      p.x = clampNum(p.x, FL+P_R, FR-P_R);
+      p.y = clampNum(p.y, FT+P_R, FB-P_R);
+    }
+    p.ax = p.ay = 0;
+    if (p.kickCd>0)     p.kickCd     -= dt;
+    if (p.slideTimer>0) p.slideTimer -= dt;
+    if (p.slideCd>0)    p.slideCd    -= dt;
+  }
+
+  // --- 4b. spelers botsen tegen elkaar (geen overlap, lichte terugkaatsing) ---
+  for (let i=0;i<players.length;i++){
+    for (let j=i+1;j<players.length;j++){
+      const a=players[i], b=players[j];
+      const dx=b.x-a.x, dy=b.y-a.y, d=len(dx,dy), min=P_R*2;
+      if (d<min && d>0){
+        const nx=dx/d, ny=dy/d, push=(min-d)/2;
+        a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+        const rel=(b.vx-a.vx)*nx + (b.vy-a.vy)*ny;   // nadering langs de normaal
+        if (rel<0){
+          const imp=-(1+0.30)*rel/2;                 // gelijke massa, e=0.30
+          a.vx-=imp*nx; a.vy-=imp*ny; b.vx+=imp*nx; b.vy+=imp*ny;
+        }
+      }
+    }
+  }
+
+  // --- 5. trap van de speler: tik = gerichte pass, vasthouden = schot ---
+  if (fireKick){
+    if (controlled && len(ball.x-controlled.x, ball.y-controlled.y) < KICK_RANGE){
+      const dx=controlled.heading.x, dy=controlled.heading.y;
+      if (charge < PASS_MAX){
+        // PASS: richt op een medespeler in je kijkrichting; anders korte stoot
+        const mate = passTargetInFacing(controlled);
+        if (mate){
+          const lead=0.14, tx=mate.x+mate.vx*lead, ty=mate.y+mate.vy*lead;
+          const pdx=tx-ball.x, pdy=ty-ball.y, pd=len(pdx,pdy)||1;
+          const power=clampNum(pd*3.4, 280, 560);
+          ball.vx=pdx/pd*power; ball.vy=pdy/pd*power;
+        } else {
+          ball.vx=dx*PASS_POWER; ball.vy=dy*PASS_POWER;
+        }
+        sfxKick();
+      } else {
+        // SCHOT: kracht schaalt met de lading
+        const power = SHOT_MIN + charge*(SHOT_MAX-SHOT_MIN);
+        ball.vx=dx*power; ball.vy=dy*power;
+        sfxShot();
+      }
+      lastTouch = controlled.team;
+    }
+    charge = 0; fireKick = false;
+  }
+
+  // --- 6. integreer bal + botsingen ---
+  // bal vs spelers: dribbelen, of poke-tackle tijdens een sliding (groter bereik)
+  for (const p of players){
+    const sliding = p.slideTimer>0;
+    const reach = P_R + B_R + (sliding ? 7 : 0);
+    const dx = ball.x-p.x, dy = ball.y-p.y, d = len(dx,dy);
+    if (d < reach && d > 0){
+      const nx=dx/d, ny=dy/d;
+      ball.x = p.x + nx*reach;            // bal net buiten de speler zetten
+      ball.y = p.y + ny*reach;
+      if (sliding){
+        ball.vx = p.heading.x*440 + nx*60; // bal vooruit poken in de glij-richting
+        ball.vy = p.heading.y*440 + ny*60;
+        if (sfxCd<=0){ sfxTackle(); sfxCd=0.2; }
+      } else {
+        ball.vx += p.vx*0.9 + nx*40;       // meenemen + zacht wegduwen = dribbel
+        ball.vy += p.vy*0.9 + ny*40;
+      }
+      lastTouch = p.team;
+    }
+  }
+  clampSpeed(ball, B_MAXV);
+  ball.x += ball.vx*dt; ball.y += ball.vy*dt;
+  ball.vx *= B_DRAG; ball.vy *= B_DRAG;
+  if (len(ball.vx,ball.vy) < 3){ ball.vx=0; ball.vy=0; } // stilleggen
+
+  // spoor bijhouden voor het bal-effect in beeld
+  ball.trail.push({ x:ball.x, y:ball.y });
+  if (ball.trail.length > 8) ball.trail.shift();
+
+  handleBoundaries();
+}
+
+function clampNum(v,a,b){ return v<a?a : v>b?b : v; }
+
+// medespeler in je kijkrichting (voor de gerichte pass bij een tik)
+function passTargetInFacing(p){
+  const hx=p.heading.x, hy=p.heading.y;
+  let best=null, bestScore=-Infinity;
+  for (const q of players){
+    if (q.team!==p.team || q===p || q.role==="GK") continue;
+    const dx=q.x-p.x, dy=q.y-p.y, d=len(dx,dy)||1;
+    if (d<25 || d>440) continue;
+    const dotF=(dx*hx + dy*hy)/d;     // cosinus van de hoek met de kijkrichting
+    if (dotF < 0.40) continue;        // buiten ~66°-kegel: negeren
+    const score = dotF*100 - d*0.10;  // recht vooruit én dichtbij = beter
+    if (score>bestScore){ bestScore=score; best=q; }
+  }
+  return best;
+}
+
+/* =========================================================================
+   AI (FASE 2) — balbezit, rollen, positiespel, dekken, passen, schieten
+   ========================================================================= */
+
+// wie heeft de bal? dichtstbijzijnde speler binnen controle-afstand, anders "los"
+function possession(){
+  let best=null, bd=CTRL_DIST;
+  for (const p of players){
+    const d = len(ball.x-p.x, ball.y-p.y);
+    if (d < bd){ bd=d; best=p; }
+  }
+  return { team: best ? best.team : null, player: best };
+}
+
+function updateAI(){
+  const poss = possession();
+
+  for (const team of ["a","b"]){
+    const attacking = poss.team === team;
+    const presser   = nearestOutfield(team, null);   // de enige die de bal najaagt
+    const carrier   = (attacking && poss.player && poss.player.team===team) ? poss.player : null;
+    const ownX  = team==="a" ? FL : FR;
+    const atkX  = team==="a" ? FR : FL;
+    const atkDir= team==="a" ? 1 : -1;
+
+    // dekkingsopdrachten: koppel elke vrije verdediger aan een tegenstander (alleen bij verdedigen)
+    const assign = new Map();
+    if (!attacking){
+      const threats = players.filter(q => q.team!==team && q.role!=="GK" && q!==poss.player);
+      const markers = players.filter(q => q.team===team && q.role!=="GK" && q!==presser);
+      const used = new Set();
+      for (const mk of markers){
+        let pick=null, pd=Infinity;
+        for (const th of threats){
+          if (used.has(th)) continue;
+          const d = len(th.x-mk.x, th.y-mk.y);
+          if (d<pd){ pd=d; pick=th; }
+        }
+        if (pick){ assign.set(mk, pick); used.add(pick); }
+      }
+    }
+
+    for (const p of players){
+      if (p.team!==team || p.role==="GK" || p===controlled) continue;
+
+      if (p===carrier){ carrierAI(p, atkX); continue; }
+      if (p===presser){ steerTo(p, ball.x, ball.y); continue; }
+
+      if (!attacking && assign.has(p)){
+        // dek je man aan de doelkant (sta tussen man en eigen doel)
+        const m = assign.get(p);
+        const mx = m.x + (ownX - m.x)*0.30;
+        const my = m.y + (H/2 - m.y)*0.06;
+        steerTo(p, mx, my, 0.95);
+      } else {
+        // verschuif het team-blok: bij aanval naar voren, bij verdedigen naar achter
+        let shiftX = attacking   ?  atkDir*SHAPE_SHIFT
+                   : poss.team    ? -atkDir*SHAPE_SHIFT*0.8
+                   :                 atkDir*30;            // losse bal: licht vooruit
+        if (attacking && p.role==="FWD") shiftX += atkDir*60; // spits drukt door
+        if (attacking && p.role==="DEF") shiftX -= atkDir*60; // verdediger blijft achterin
+        const tx = clampNum(p.hx + shiftX,            FL+P_R+8, FR-P_R-8);
+        const ty = clampNum(p.hy + (ball.y-H/2)*0.30, FT+P_R+8, FB-P_R-8);
+        steerTo(p, tx, ty, 0.85);
+      }
+    }
+  }
+
+  for (const g of players) if (g.role==="GK") goalkeeperAI(g);
+}
+
+// speler met bal: schieten bij het doel, passen onder druk, anders dribbelen
+function carrierAI(p, atkX){
+  const dGoal = len(atkX-p.x, H/2-p.y);
+  let press = Infinity;
+  for (const q of players){
+    if (q.team===p.team) continue;
+    const d = len(q.x-p.x, q.y-p.y);
+    if (d<press) press = d;
+  }
+  // 1) dicht genoeg bij het doel -> schiet in een hoek
+  if (dGoal < SHOOT_RANGE && p.kickCd<=0){
+    const cornerY = H/2 + (Math.random()<0.5?-1:1)*(GOAL_H/2 - 16);
+    aimKick(p, atkX, cornerY, KICK*1.05);
+    p.kickCd = 0.6; return;
+  }
+  // 2) onder druk -> zoek een vrije medespeler
+  if (press < PRESS_DIST){
+    const tgt = bestPassTarget(p, atkX);
+    if (tgt){ passTo(p, tgt); return; }
+  }
+  // 3) anders: dribbel richting doel (de botsing duwt de bal mee)
+  steerTo(p, atkX, H/2);
+}
+
+// beste medespeler om naar te passen: vrij, liefst vooruit, niet te ver
+function bestPassTarget(p, atkX){
+  const dir = Math.sign(atkX - p.x) || 1;
+  let best=null, bestScore=40;          // onder deze score: niet passen
+  for (const q of players){
+    if (q.team!==p.team || q===p || q.role==="GK") continue;
+    const d = len(q.x-p.x, q.y-p.y);
+    if (d<45 || d>360) continue;
+    let open = Infinity;                // ruimte rond de ontvanger
+    for (const o of players){
+      if (o.team===p.team) continue;
+      const od = len(o.x-q.x, o.y-q.y);
+      if (od<open) open=od;
+    }
+    let score = open - d*0.15;          // veel ruimte = goed, lange pass iets minder
+    if ((q.x-p.x)*dir > 0) score += 60; // voorwaartse pass belonen
+    if (score>bestScore){ bestScore=score; best=q; }
+  }
+  return best;
+}
+
+// pass naar de licht voorspelde positie van de ontvanger
+function passTo(p, tgt){
+  const lead = 0.12;
+  const tx = tgt.x + tgt.vx*lead, ty = tgt.y + tgt.vy*lead;
+  const dx = tx-ball.x, dy = ty-ball.y, d = len(dx,dy)||1;
+  const power = clampNum(d*3.2, 260, 560);
+  ball.vx = dx/d*power; ball.vy = dy/d*power;
+  p.kickCd = 0.5; lastTouch = p.team; sfxKick();
+}
+
+// keeper: dek de hoek op de lijn doel-bal, kom uit en werk weg in de zestien
+function goalkeeperAI(g){
+  const own   = g.team==="a" ? FL : FR;
+  const inBox = g.team==="a" ? ball.x < FL+BOX_W : ball.x > FR-BOX_W;
+  const advance = inBox ? 44 : 16;                       // hoever van de lijn
+  const tx = own + (g.team==="a"?1:-1)*advance;
+  const ty = clampNum(H/2 + (ball.y-H/2)*0.7, GTOP+8, GBOT-8);
+  steerTo(g, tx, ty, 1);
+  if (inBox && len(ball.x-g.x, ball.y-g.y) < 36 && g.kickCd<=0){
+    aimKick(g, g.team==="a"?FR:FL, H/2 + (Math.random()*200-100), 600);
+    g.kickCd = 0.6;
+  }
+}
+function aimKick(p, tx, ty, power){
+  const dx=tx-ball.x, dy=ty-ball.y, d=len(dx,dy)||1;
+  ball.vx = dx/d*power; ball.vy = dy/d*power;
+  lastTouch = p.team; sfxKick();
+}
+
+// uit-de-lijn, doellijnen en doelpunten
+function handleBoundaries(){
+  // doellijn links (team A verdedigt links)
+  if (ball.x - B_R < FL){
+    if (ball.y>GTOP && ball.y<GBOT){ goal("b"); return; }
+    if (lastTouch === "a") cornerKick("b", ball.y < H/2 ? "top" : "bot", 0); // verdediger raakte laatst -> hoekschop
+    else                   goalKick("a");
+    return;
+  }
+  // doellijn rechts (team B verdedigt rechts)
+  if (ball.x + B_R > FR){
+    if (ball.y>GTOP && ball.y<GBOT){ goal("a"); return; }
+    if (lastTouch === "b") cornerKick("a", ball.y < H/2 ? "top" : "bot", 1);
+    else                   goalKick("b");
+    return;
+  }
+  // zijlijnen -> inworp voor de tegenstander van wie de bal laatst raakte
+  if (ball.y - B_R < FT){ throwIn(other(lastTouch), ball.x, FT); return; }
+  if (ball.y + B_R > FB){ throwIn(other(lastTouch), ball.x, FB); return; }
+}
+function other(t){ return t === "a" ? "b" : "a"; }
+
+function throwIn(team, x, line){
+  const bx = clampNum(x, FL+24, FR-24);
+  const by = line===FT ? FT + B_R + 2 : FB - B_R - 2;
+  deadBall("Inworp", bx, by, team, false);
+}
+function cornerKick(team, vside, sideIdx){
+  const bx = sideIdx===0 ? FL + B_R + 8 : FR - B_R - 8;
+  const by = vside==="top" ? FT + B_R + 8 : FB - B_R - 8;
+  deadBall("Hoekschop", bx, by, team, false);
+}
+function goalKick(team){
+  const own = team==="a" ? FL : FR;
+  const dir = team==="a" ? 1 : -1;
+  deadBall("Doeltrap", own + dir*70, H/2, team, true);
+}
+
+// plaats de bal stil op de hervattingsplek, zet een nemer ernaast, korte pauze
+function deadBall(msg, bx, by, team, useKeeper){
+  ball.x = bx; ball.y = by; ball.vx = 0; ball.vy = 0; ball.trail.length = 0;
+  lastTouch = null;
+  let taker = useKeeper ? players.find(p => p.team===team && p.role==="GK") : null;
+  if (!taker){
+    let bd = Infinity;
+    for (const p of players){
+      if (p.team!==team || p.role==="GK") continue;
+      const d = len(p.x-bx, p.y-by);
+      if (d<bd){ bd=d; taker=p; }
+    }
+  }
+  if (taker){
+    let ux = taker.x-bx, uy = taker.y-by; const ul = len(ux,uy)||1; ux/=ul; uy/=ul;
+    taker.x = bx + ux*(P_R+B_R+3); taker.y = by + uy*(P_R+B_R+3);
+    taker.vx = taker.vy = 0;
+    const hx = W/2-bx, hy = H/2-by, hl = len(hx,hy)||1;     // kijk het veld in
+    taker.heading.x = hx/hl; taker.heading.y = hy/hl;
+  }
+  message = msg; freeze = 0.7; sfxOut();
+}
+
+function goal(team){
+  score[team]++;
+  updateScore();
+  message = "GOAL!";
+  flash = 1.0; flashTeam = team;
+  freeze = 1.4; lastTouch = null;
+  resetPositions();
+  sfxGoal();
+}
+
+/* =========================================================================
+   WEDSTRIJD, GELUID & HULPJES (FASE 4)
+   ========================================================================= */
+function fmt(s){ const m=Math.floor(s/60), ss=s%60; return m+":"+(ss<10?"0":"")+ss; }
+function updateScore(){ scoreAEl.textContent = score.a; scoreBEl.textContent = score.b; }
+
+function endMatch(){
+  over = true;
+  const a=score.a, b=score.b;
+  endTitleEl.textContent  = a===b ? "Gelijkspel" : (a>b ? "Thuis wint" : "Uit wint");
+  endResultEl.textContent = "Eindstand " + a + " – " + b;
+  endScreenEl.classList.remove("hidden");
+  sfxWhistle();
+}
+function restartMatch(){
+  score.a = 0; score.b = 0; updateScore();
+  clock = MATCH_LEN; lastClockShown = -1; over = false;
+  message = ""; flash = 0; freeze = 0; stamina = 1; lastTouch = null;
+  resetPositions();
+  endScreenEl.classList.add("hidden");
+  last = performance.now(); acc = 0;
+  sfxWhistle();
+}
+
+// --- geluid: volledig in code gegenereerd via de Web Audio API ---
+function initAudio(){
+  if (!audioCtx){ try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+function tone(freq, dur, type="square", gain=0.06, slideTo=null){
+  if (muted || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  o.connect(g).connect(audioCtx.destination); o.start(t); o.stop(t+dur);
+}
+function noise(dur, gain=0.05){
+  if (muted || !audioCtx) return;
+  const n = Math.floor(audioCtx.sampleRate*dur);
+  const buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate), d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1)*(1 - i/n);
+  const s = audioCtx.createBufferSource(); s.buffer = buf;
+  const g = audioCtx.createGain(); g.gain.value = gain;
+  s.connect(g).connect(audioCtx.destination); s.start();
+}
+function sfxKick(){ tone(200, 0.08, "square", 0.05, 120); }
+function sfxShot(){ tone(160, 0.13, "sawtooth", 0.07, 90); }
+function sfxGoal(){ tone(520,0.12,"square",0.06); setTimeout(()=>tone(660,0.12,"square",0.06),110); setTimeout(()=>tone(784,0.22,"square",0.06),230); }
+function sfxWhistle(){ tone(1900, 0.18, "square", 0.05, 2150); }
+function sfxOut(){ tone(1500, 0.12, "square", 0.04); }
+function sfxTackle(){ noise(0.12, 0.06); }
+
+/* =========================================================================
+   TEKENEN — moderne broadcast-look
+   ========================================================================= */
+// kleuren één keer uitlezen (sneller dan elk frame getComputedStyle)
+const COL = {
+  turfA: getCss("--turf-a"), turfB: getCss("--turf-b"),
+  teamA: getCss("--team-a"), teamB: getCss("--team-b"),
+  ball:  getCss("--ball"),
+};
+function rgba(hex,a){ const n=parseInt(hex.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+function dot(x,y,r){ ctx.beginPath(); ctx.fillStyle="rgba(238,246,240,.85)"; ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); }
+function arcSeg(x,y,r,a0,a1){ ctx.beginPath(); ctx.arc(x,y,r,a0,a1); ctx.stroke(); }
+
+function draw(){
+  drawPitch();
+  drawPlayers();
+  drawBall();
+
+  // doelpunt-flits in de kleur van het scorende team
+  if (flash > 0){
+    const col = flashTeam==="a" ? COL.teamA : COL.teamB;
+    const rg = ctx.createRadialGradient(W/2,H/2, 90, W/2,H/2, W*0.7);
+    rg.addColorStop(0, rgba(col, 0));
+    rg.addColorStop(1, rgba(col, 0.22*flash));
+    ctx.fillStyle = rg; ctx.fillRect(0,0,W,H);
+  }
+  // doelpunt-tekst
+  if (message){
+    ctx.save();
+    ctx.shadowColor="rgba(0,0,0,.55)"; ctx.shadowBlur=18;
+    ctx.fillStyle="#ffce5c";
+    ctx.font="800 60px Bahnschrift, system-ui, sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(message, W/2, H/2 - 60);
+    ctx.restore();
+  }
+}
+
+function drawPitch(){
+  ctx.fillStyle = "#091015"; ctx.fillRect(0,0,W,H);   // stadion-achtergrond
+
+  // grasmat met maaibanen
+  const stripes = 12, sw = FW/stripes;
+  for (let i=0;i<stripes;i++){
+    ctx.fillStyle = i%2 ? COL.turfB : COL.turfA;
+    ctx.fillRect(FL + i*sw, FT, Math.ceil(sw)+1, FH);
+  }
+  // licht van boven (zachte verticale gloed)
+  const lg = ctx.createLinearGradient(0, FT, 0, FB);
+  lg.addColorStop(0,  "rgba(255,255,255,.10)");
+  lg.addColorStop(.45,"rgba(255,255,255,.02)");
+  lg.addColorStop(1,  "rgba(0,0,0,.12)");
+  ctx.fillStyle = lg; ctx.fillRect(FL, FT, FW, FH);
+  // randvignet voor diepte
+  const rg = ctx.createRadialGradient(W/2,H/2, FH*0.25, W/2,H/2, FW*0.62);
+  rg.addColorStop(0, "rgba(0,0,0,0)");
+  rg.addColorStop(1, "rgba(0,0,0,.30)");
+  ctx.fillStyle = rg; ctx.fillRect(FL, FT, FW, FH);
+
+  // belijning
+  ctx.strokeStyle = "rgba(238,246,240,.80)"; ctx.lineWidth = 2.5; ctx.lineJoin = "round";
+  ctx.strokeRect(FL, FT, FW, FH);                                        // buitenlijn
+  ctx.beginPath(); ctx.moveTo(W/2,FT); ctx.lineTo(W/2,FB); ctx.stroke(); // middenlijn
+  arcSeg(W/2, H/2, 58, 0, Math.PI*2);                                    // middencirkel
+  dot(W/2, H/2, 3);                                                      // middenstip
+
+  const SBW = 46, SBH = 132;                                            // doelgebied (vijf)
+  for (const side of [0,1]){
+    const sx  = side===0 ? FL : FR;
+    const dir = side===0 ? 1 : -1;
+    ctx.strokeRect(side===0 ? FL : FR-BOX_W, H/2-BOX_H/2, BOX_W, BOX_H); // zestien
+    ctx.strokeRect(side===0 ? FL : FR-SBW,  H/2-SBH/2, SBW, SBH);        // vijf
+    dot(sx + dir*78, H/2, 2.5);                                          // strafschopstip
+    arcSeg(sx + dir*78, H/2, 52, side===0 ? -0.9 : Math.PI-0.9,          // penaltyboog
+                                  side===0 ?  0.9 : Math.PI+0.9);
+  }
+  // hoekbogen
+  arcSeg(FL,FT,9, 0, Math.PI/2);
+  arcSeg(FL,FB,9, -Math.PI/2, 0);
+  arcSeg(FR,FT,9, Math.PI/2, Math.PI);
+  arcSeg(FR,FB,9, Math.PI, Math.PI*1.5);
+
+  drawGoal(0); drawGoal(1);
+}
+
+function drawGoal(side){
+  const depth = 14;
+  const x0 = side===0 ? FL-depth : FR;
+  ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(x0, GTOP, depth, GOAL_H);
+  // netraster
+  ctx.strokeStyle = "rgba(255,255,255,.16)"; ctx.lineWidth = 1;
+  for (let x=x0+3; x<x0+depth; x+=4){ ctx.beginPath(); ctx.moveTo(x,GTOP); ctx.lineTo(x,GTOP+GOAL_H); ctx.stroke(); }
+  for (let y=GTOP+3; y<GTOP+GOAL_H; y+=5){ ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x0+depth,y); ctx.stroke(); }
+  // palen
+  ctx.strokeStyle = "rgba(245,250,247,.92)"; ctx.lineWidth = 3;
+  ctx.strokeRect(x0, GTOP, depth, GOAL_H);
+}
+
+function drawPlayers(){
+  for (const p of players){
+    const isUser = p===controlled;
+    const base = p.team==="a" ? COL.teamA : COL.teamB;
+    const body = p.role==="GK" ? shade(base,-0.30) : base;
+
+    // schaduw (iets verschoven voor diepte)
+    ctx.fillStyle="rgba(0,0,0,.30)";
+    ctx.beginPath(); ctx.ellipse(p.x+1.5, p.y+P_R*0.85, P_R, P_R*0.55, 0,0,Math.PI*2); ctx.fill();
+
+    // glij-streep tijdens een sliding
+    if (p.slideTimer>0){
+      ctx.save();
+      ctx.globalAlpha = 0.30; ctx.fillStyle = base;
+      ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(p.heading.y, p.heading.x));
+      ctx.beginPath(); ctx.ellipse(-7, 0, P_R*1.7, P_R*0.7, 0, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // gouden gloed onder de bestuurde speler
+    if (isUser){
+      const glow = ctx.createRadialGradient(p.x,p.y,P_R-2, p.x,p.y,P_R+16);
+      glow.addColorStop(0,"rgba(255,206,92,.55)");
+      glow.addColorStop(1,"rgba(255,206,92,0)");
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(p.x,p.y,P_R+16,0,Math.PI*2); ctx.fill();
+    }
+
+    // lichaam met volume (licht van linksboven)
+    const g = ctx.createRadialGradient(p.x-P_R*0.4, p.y-P_R*0.5, 1, p.x, p.y, P_R*1.2);
+    g.addColorStop(0, shade(body, 0.34));
+    g.addColorStop(1, shade(body,-0.12));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x,p.y,P_R,0,Math.PI*2); ctx.fill();
+    ctx.lineWidth=1.5; ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.stroke();
+
+    // bestuurde speler: gouden ring + richtingschevron
+    if (isUser){
+      ctx.lineWidth=2.5; ctx.strokeStyle="#ffce5c";
+      ctx.beginPath(); ctx.arc(p.x,p.y,P_R+4,0,Math.PI*2); ctx.stroke();
+      const hx=p.heading.x, hy=p.heading.y, lx=-hy, ly=hx;
+      ctx.fillStyle="#ffce5c"; ctx.beginPath();
+      ctx.moveTo(p.x+hx*(P_R+12), p.y+hy*(P_R+12));
+      ctx.lineTo(p.x+hx*(P_R+4)+lx*4.5, p.y+hy*(P_R+4)+ly*4.5);
+      ctx.lineTo(p.x+hx*(P_R+4)-lx*4.5, p.y+hy*(P_R+4)-ly*4.5);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // laadring tijdens het opladen van een trap (groen = pass, oranje = schot)
+    if (isUser && charge > 0.02){
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = charge < PASS_MAX ? "#9fe7b0" : "#ff9d3c";
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, P_R+9, -Math.PI/2, -Math.PI/2 + charge*Math.PI*2);
+      ctx.stroke();
+    }
+
+    // conditiebalk onder de bestuurde speler
+    if (isUser){
+      const bw=26, bh=3, bx2=p.x-bw/2, by2=p.y+P_R+8;
+      ctx.fillStyle="rgba(0,0,0,.5)"; ctx.fillRect(bx2,by2,bw,bh);
+      ctx.fillStyle = stamina>0.3 ? "#7ddc9b" : "#ff7a59";
+      ctx.fillRect(bx2,by2,bw*stamina,bh);
+    }
+
+    // keeper-markering
+    if (p.role==="GK"){
+      ctx.fillStyle="rgba(255,255,255,.9)";
+      ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function drawBall(){
+  // spoor (vervaagt naar achteren)
+  const n = ball.trail.length;
+  for (let i=0;i<n;i++){
+    const t = ball.trail[i], a = (i+1)/n;
+    ctx.globalAlpha = a*0.28;
+    ctx.fillStyle = COL.ball;
+    ctx.beginPath(); ctx.arc(t.x, t.y, B_R*a*0.9, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // schaduw
+  ctx.fillStyle="rgba(0,0,0,.30)";
+  ctx.beginPath(); ctx.ellipse(ball.x+1, ball.y+B_R*0.8, B_R*1.05, B_R*0.55, 0,0,Math.PI*2); ctx.fill();
+  // bal met highlight
+  const g = ctx.createRadialGradient(ball.x-B_R*0.4, ball.y-B_R*0.5, 0.5, ball.x, ball.y, B_R*1.25);
+  g.addColorStop(0,"#ffffff"); g.addColorStop(.6, COL.ball); g.addColorStop(1, shade(COL.ball,-0.28));
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ball.x, ball.y, B_R, 0, Math.PI*2); ctx.fill();
+}
+
+/* kleine CSS/kleur-hulpjes */
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function shade(c, amt){
+  let r,g,b;
+  if (c[0] === "#"){ const n=parseInt(c.slice(1),16); r=(n>>16)&255; g=(n>>8)&255; b=n&255; }
+  else { const m=c.match(/\d+/g); r=+m[0]; g=+m[1]; b=+m[2]; }   // rgb(...)
+  r=clampNum(Math.round(r+255*amt),0,255);
+  g=clampNum(Math.round(g+255*amt),0,255);
+  b=clampNum(Math.round(b+255*amt),0,255);
+  return `rgb(${r},${g},${b})`;
+}
+
+/* =========================================================================
+   GAMELOOP — vaste timestep voor stabiele natuurkunde
+   ========================================================================= */
+function frame(now){
+  if (!running) return;
+  let dt = (now - last)/1000; last = now;
+  dt = Math.min(dt, 0.05);          // bij hapering niet "exploderen"
+  acc += dt;
+  while (acc >= FIXED){ step(FIXED); acc -= FIXED; }
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function startGame(){
+  document.getElementById("startScreen").classList.add("hidden");
+  document.body.classList.add("playing");      // toont touch-knoppen op mobiel
+  initAudio();
+  clock = MATCH_LEN; lastClockShown = -1; over = false; stamina = 1; lastTouch = null;
+  clockEl.textContent = fmt(MATCH_LEN);
+  resetPositions();
+  running = true; last = performance.now(); acc = 0;
+  requestAnimationFrame(frame);
+  sfxWhistle();
+}
+document.getElementById("playBtn").addEventListener("click", startGame);
+
+/* ---- HUD-elementen + knoppen (Fase 4) ---- */
+const clockEl     = document.getElementById("clock");
+const scoreAEl    = document.getElementById("scoreA");
+const scoreBEl    = document.getElementById("scoreB");
+const endScreenEl = document.getElementById("endScreen");
+const endTitleEl  = document.getElementById("endTitle");
+const endResultEl = document.getElementById("endResult");
+const muteBtnEl   = document.getElementById("muteBtn");
+const againBtnEl  = document.getElementById("againBtn");
+muteBtnEl.addEventListener("click", () => {
+  muted = !muted;
+  muteBtnEl.classList.toggle("off", muted);
+  muteBtnEl.textContent = muted ? "Geluid uit" : "Geluid";
+  if (!muted) initAudio();
+});
+againBtnEl.addEventListener("click", restartMatch);
+clockEl.textContent = fmt(MATCH_LEN);
+
+/* ---- touch-besturing: analoge joystick (links) + schietknop (rechts) ---- */
+const stickBase = document.getElementById("stickBase");
+const knob      = document.getElementById("knob");
+const kickBtn   = document.getElementById("kickBtn");
+let stickId = null;
+function stickStart(e){ stickId = e.pointerId; stickBase.setPointerCapture(e.pointerId); stickMove(e); }
+function stickMove(e){
+  if (e.pointerId !== stickId) return;
+  e.preventDefault();
+  const r = stickBase.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2, rad = r.width/2;
+  const dx = e.clientX - cx, dy = e.clientY - cy;
+  const d = Math.hypot(dx,dy) || 1;
+  const m = Math.min(d, rad);                 // knop binnen de ring houden
+  const kx = dx/d*m, ky = dy/d*m;
+  knob.style.transform = `translate(${kx}px, ${ky}px)`;
+  touchVec.x = kx/rad; touchVec.y = ky/rad;   // -1..1, lengte = hoe ver ingedrukt
+  touchVec.active = true;
+}
+function stickEnd(e){
+  if (e.pointerId !== stickId) return;
+  stickId = null;
+  touchVec.x = 0; touchVec.y = 0; touchVec.active = false;
+  knob.style.transform = "translate(0,0)";
+}
+stickBase.addEventListener("pointerdown",  stickStart);
+stickBase.addEventListener("pointermove",  stickMove);
+stickBase.addEventListener("pointerup",    stickEnd);
+stickBase.addEventListener("pointercancel",stickEnd);
+// trap-knop: ingedrukt houden laadt op, loslaten voert pass/schot uit
+kickBtn.addEventListener("pointerdown", e => { e.preventDefault(); kickHeld = true; charge = 0; });
+function kickRelease(e){ e.preventDefault(); if (kickHeld){ kickHeld = false; fireKick = true; } }
+kickBtn.addEventListener("pointerup",     kickRelease);
+kickBtn.addEventListener("pointercancel", kickRelease);
+kickBtn.addEventListener("pointerleave",  kickRelease);
+// slide-knop
+const slideBtn = document.getElementById("slideBtn");
+slideBtn.addEventListener("pointerdown", e => { e.preventDefault(); slideQueued = true; });
+
+// teken alvast een stilstaand veld achter het startscherm
+resetPositions(); draw();
+</script>
+</body>
+</html>

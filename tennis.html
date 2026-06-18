@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tennis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#5fae34;--violet-dark:#4a8a28;}
+  .top{width:100%;max-width:720px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;}
+  .who{font-family:'Fredoka',sans-serif;font-weight:600;color:var(--violet-dark);font-size:1.05rem;}
+  .card{background:#fff;width:100%;max-width:720px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:8px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;touch-action:none;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:440px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="who" id="who">Tegenstander</div>
+    <div class="pill"><span class="lbl">Stand</span><span class="val" id="scoreP">0</span></div>
+    <div class="pill"><span class="lbl">vs</span><span class="val" id="scoreA">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🎾 Tennis</h1>
+    <canvas id="cv" width="700" height="440"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>🎾 Tennis</h2>
+      <p>Beweeg je racket met de muis (of vinger / pijltjes). Win de wedstrijd tot <b>5 punten</b> en je krijgt een sterkere tegenstander!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="msgScreen">
+      <h2 id="msgTitle"></h2>
+      <p id="msgText"></p>
+      <button class="bigbtn" id="msgBtn">Verder</button>
+    </div>
+  </div>
+  <div class="hint-foot">Beweeg omhoog/omlaag • Eerste bij 5 punten wint</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height;
+  const PW=14, PH=86;
+  const OPP=[
+    {name:"Bram Beginner 🐢", ai:3.2, ball:5.0},
+    {name:"Tess Talent 🦊",    ai:4.0, ball:5.8},
+    {name:"Max Meester 🐯",    ai:4.8, ball:6.7},
+    {name:"Nina Ninja 🥷",     ai:5.6, ball:7.6},
+    {name:"Kampioen Koen 👑",  ai:6.6, ball:8.6},
+  ];
+  const BEST_KEY="tennis_beaten";
+  let beaten=0; try{beaten=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+
+  let opp=Math.min(beaten,OPP.length-1);
+  let py=H/2-PH/2, ay=H/2-PH/2, scoreP=0, scoreA=0;
+  let ball={}, running=false;
+  const $=id=>document.getElementById(id);
+
+  function resetBall(dir){
+    const o=OPP[opp];
+    ball={x:W/2,y:H/2,vx:(dir||(Math.random()<.5?-1:1))*o.ball,vy:(Math.random()*2-1)*3.2};
+  }
+  function newMatch(){
+    scoreP=0; scoreA=0; py=ay=H/2-PH/2;
+    $("scoreP").textContent=0; $("scoreA").textContent=0;
+    $("who").textContent=OPP[opp].name;
+    resetBall(); running=true;
+    $("startScreen").classList.add("hidden-el"); $("msgScreen").classList.add("hidden-el");
+  }
+  function point(who){
+    if(who==="p"){scoreP++;$("scoreP").textContent=scoreP;} else {scoreA++;$("scoreA").textContent=scoreA;}
+    if(scoreP>=5||scoreA>=5){ running=false; setTimeout(matchOver,500); }
+    else resetBall(who==="p"?-1:1);
+  }
+  function matchOver(){
+    const won=scoreP>scoreA;
+    if(won){
+      if(opp+1>beaten){ beaten=opp+1; try{localStorage.setItem(BEST_KEY,String(beaten));}catch(e){} }
+      if(opp>=OPP.length-1){
+        $("msgTitle").textContent="🏆 Kampioen!"; $("msgText").textContent="Je hebt iedereen verslagen! Speel gerust nog eens.";
+        $("msgBtn").textContent="Opnieuw"; $("msgBtn").onclick=()=>{opp=0;newMatch();};
+      } else {
+        $("msgTitle").textContent="🎉 Gewonnen!"; $("msgText").innerHTML="Je verslaat "+OPP[opp].name+"!<br>Klaar voor de volgende?";
+        $("msgBtn").textContent="Volgende tegenstander →"; $("msgBtn").onclick=()=>{opp++;newMatch();};
+      }
+    } else {
+      $("msgTitle").textContent="Helaas, verloren"; $("msgText").innerHTML="Je verliest van "+OPP[opp].name+". Probeer het nog eens!";
+      $("msgBtn").textContent="Opnieuw proberen"; $("msgBtn").onclick=()=>newMatch();
+    }
+    $("msgScreen").classList.remove("hidden-el");
+  }
+
+  function step(){
+    if(!running) return;
+    const o=OPP[opp];
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.y<8){ball.y=8;ball.vy*=-1;} if(ball.y>H-8){ball.y=H-8;ball.vy*=-1;}
+    // speler-racket links
+    if(ball.vx<0 && ball.x-8<30+PW && ball.x>20 && ball.y>py && ball.y<py+PH){
+      ball.x=30+PW+8; ball.vx=Math.abs(ball.vx)*1.04; ball.vy+=((ball.y-(py+PH/2))/PH)*6;
+    }
+    // AI-racket rechts
+    if(ball.vx>0 && ball.x+8>W-30-PW && ball.x<W-20 && ball.y>ay && ball.y<ay+PH){
+      ball.x=W-30-PW-8; ball.vx=-Math.abs(ball.vx)*1.04; ball.vy+=((ball.y-(ay+PH/2))/PH)*6;
+    }
+    ball.vy=Math.max(-9,Math.min(9,ball.vy));
+    if(ball.x<0) point("a");
+    if(ball.x>W) point("p");
+    // AI beweegt
+    const target=ball.y-PH/2 + (Math.random()*30-15);
+    if(ball.vx>0){ if(ay+PH/2<ball.y-6)ay+=o.ai; else if(ay+PH/2>ball.y+6)ay-=o.ai; }
+    else { if(ay+PH/2<H/2-6)ay+=o.ai*0.5; else ay-=o.ai*0.5; }
+    ay=Math.max(0,Math.min(H-PH,ay));
+  }
+  function draw(){
+    const L=24,T=24,Rt=W-24,B=H-24, NX=W/2, sIn=30, sv=110;
+    // gravel/gras run-off
+    ctx.fillStyle="#3a8f59"; ctx.fillRect(0,0,W,H);
+    // baan-oppervlak
+    ctx.fillStyle="#4aa86a"; ctx.fillRect(L,T,Rt-L,B-T);
+    ctx.fillStyle="rgba(255,255,255,.04)"; for(let x=L;x<Rt;x+=46) ctx.fillRect(x,T,23,B-T);
+    // witte lijnen
+    ctx.strokeStyle="#f4faf6"; ctx.lineWidth=3;
+    ctx.strokeRect(L,T,Rt-L,B-T);                                       // doubles + baselines
+    ctx.beginPath(); ctx.moveTo(L,T+sIn); ctx.lineTo(Rt,T+sIn);
+    ctx.moveTo(L,B-sIn); ctx.lineTo(Rt,B-sIn); ctx.stroke();            // singles zijlijnen
+    ctx.beginPath(); ctx.moveTo(NX-sv,T+sIn); ctx.lineTo(NX-sv,B-sIn);
+    ctx.moveTo(NX+sv,T+sIn); ctx.lineTo(NX+sv,B-sIn); ctx.stroke();     // servicelijnen
+    ctx.beginPath(); ctx.moveTo(NX-sv,H/2); ctx.lineTo(NX+sv,H/2); ctx.stroke(); // midden-servicelijn
+    ctx.beginPath(); ctx.moveTo(L,H/2); ctx.lineTo(L+12,H/2); ctx.moveTo(Rt-12,H/2); ctx.lineTo(Rt,H/2); ctx.stroke();
+    // net (verticaal, dwars over het veld)
+    ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1;
+    for(let y=T;y<=B;y+=6){ ctx.beginPath(); ctx.moveTo(NX-7,y); ctx.lineTo(NX+7,y); ctx.stroke(); }
+    for(let dx=-6;dx<=6;dx+=3){ ctx.beginPath(); ctx.moveTo(NX+dx,T); ctx.lineTo(NX+dx,B); ctx.stroke(); }
+    ctx.fillStyle="#fff"; ctx.fillRect(NX-7,T,14,3); ctx.fillRect(NX-7,B-3,14,3);
+    ctx.fillStyle="#2b2d6b"; ctx.fillRect(NX-10,T-10,5,12); ctx.fillRect(NX+5,B-2,5,12);   // netpalen
+    // rackets
+    drawRacket(38, py+PH/2, -1, "#5fae34");
+    drawRacket(W-38, ay+PH/2, 1, "#2667cc");
+    // tennisbal met naad
+    const bx=ball.x||W/2, by=ball.y||H/2;
+    ctx.fillStyle="#d8f24a"; ctx.beginPath(); ctx.arc(bx,by,8,0,7); ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.arc(bx-3,by,9,-0.9,0.9); ctx.stroke();
+    ctx.beginPath(); ctx.arc(bx+3,by,9,Math.PI-0.9,Math.PI+0.9); ctx.stroke();
+    ctx.strokeStyle="rgba(0,0,0,.2)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(bx,by,8,0,7); ctx.stroke();
+  }
+  function drawRacket(cx,cy,dir,frame){
+    const rx=14, ry=PH/2, hx=dir<0?8:W-8;
+    ctx.strokeStyle="#7a4a1f"; ctx.lineWidth=7; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(hx,cy); ctx.stroke();
+    ctx.strokeStyle="#2b2d6b"; ctx.lineWidth=9; ctx.beginPath(); ctx.moveTo(hx,cy); ctx.lineTo(hx+(dir<0?10:-10),cy); ctx.stroke();
+    ctx.fillStyle="#fbfdf5"; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.ellipse(cx,cy,rx-2,ry-2,0,0,7); ctx.clip();
+    ctx.strokeStyle="rgba(43,45,107,.22)"; ctx.lineWidth=1;
+    for(let i=-3;i<=3;i++){ ctx.beginPath(); ctx.moveTo(cx+i*4,cy-ry); ctx.lineTo(cx+i*4,cy+ry); ctx.stroke(); }
+    for(let j=-ry;j<=ry;j+=6){ ctx.beginPath(); ctx.moveTo(cx-rx,cy+j); ctx.lineTo(cx+rx,cy+j); ctx.stroke(); }
+    ctx.restore();
+    ctx.lineWidth=4; ctx.strokeStyle=frame; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.stroke();
+  }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+
+  function movePaddle(clientY){
+    const r=cv.getBoundingClientRect();
+    const y=(clientY-r.top)*(H/r.height);
+    py=Math.max(0,Math.min(H-PH,y-PH/2));
+  }
+  cv.addEventListener("pointermove",e=>{ if(running) movePaddle(e.clientY); });
+  cv.addEventListener("pointerdown",e=>{ if(running) movePaddle(e.clientY); });
+  document.addEventListener("keydown",e=>{
+    if(!running) return;
+    if(e.key==="ArrowUp"||e.key==="w"){py=Math.max(0,py-26);} 
+    if(e.key==="ArrowDown"||e.key==="s"){py=Math.min(H-PH,py+26);}
+  });
+  $("startBtn").onclick=newMatch;
+  draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Typmaatje — leer typen met Bliep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --cream:#FFF8EE;
+    --ink:#2B2D6B;
+    --ink-soft:#6A6CA8;
+    --sun:#FFC83D;
+    --coral:#FF6B5C;
+    --mint:#2ED6A6;
+    --sky:#3DC9FF;
+    --violet:#2ED6A6;
+    --violet-dark:#16b487;
+    --pl:#FF6B5C;  /* linkerpink */
+    --rl:#FF9F40;  /* linker ringvinger */
+    --ml:#FFC83D;  /* linker middelvinger */
+    --il:#2ED6A6;  /* linker wijsvinger */
+    --ir:#3DC9FF;  /* rechter wijsvinger */
+    --mr:#6C9CFF;  /* rechter middelvinger */
+    --rr:#B8A6FF;  /* rechter ringvinger */
+    --pr:#FF7AB8;  /* rechterpink */
+    --th:#C9D1E0;  /* duim */
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;}
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%, #FFFDF8 0%, var(--cream) 55%, #FBEFDD 100%);
+    color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100%;padding:14px;gap:12px;
+    overflow-x:hidden;
+  }
+  .wrap{width:100%;max-width:760px;display:flex;flex-direction:column;gap:12px;}
+
+  /* HUD */
+  .hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between;}
+  .pill{
+    background:#fff;border:3px solid #fff;border-radius:18px;
+    padding:8px 14px;box-shadow:0 6px 0 rgba(43,45,107,.08);
+    display:flex;align-items:center;gap:8px;font-weight:800;
+  }
+  .pill .lbl{font-family:'Nunito';font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);}
+  .pill .val{font-family:'Fredoka';font-size:1.35rem;line-height:1;}
+  .level-pill .val{color:var(--ink);}
+  .points-pill{background:linear-gradient(180deg,#FFE9A8,#FFD45E);}
+  .points-pill .val{color:#8a5b00;}
+  .streak-pill{background:linear-gradient(180deg,#FFD9D4,#FFB3AB);transition:transform .15s;}
+  .streak-pill.hot{background:linear-gradient(180deg,#FFC53D,#FF8A3D);animation:wobble .4s;}
+  .back-pill{
+    font-family:'Fredoka';font-weight:500;font-size:.95rem;color:var(--ink);text-decoration:none;
+    background:#fff;border-radius:14px;padding:8px 14px;box-shadow:0 5px 0 rgba(43,45,107,.08);
+  }
+  .back-pill:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(43,45,107,.08);}
+  .mute-btn{cursor:pointer;font-size:1.2rem;background:#fff;border:none;border-radius:14px;padding:8px 12px;box-shadow:0 5px 0 rgba(43,45,107,.08);}
+  .mute-btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(43,45,107,.08);}
+
+  /* Card */
+  .card{
+    background:#fff;border-radius:30px;padding:18px 18px 22px;
+    box-shadow:0 18px 40px rgba(43,45,107,.10);
+    display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;overflow:hidden;
+  }
+  .level-name{text-align:center;}
+  .level-name h2{font-family:'Fredoka';font-weight:700;margin:0;font-size:1.25rem;color:var(--violet-dark);}
+  .level-name p{margin:2px 0 0;color:var(--ink-soft);font-size:.85rem;font-weight:700;}
+
+  /* progress */
+  .progress{width:100%;max-width:420px;height:14px;background:#EFEAF7;border-radius:99px;overflow:hidden;}
+  .progress>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--sky));border-radius:99px;transition:width .25s ease;}
+
+  /* mascot + target */
+  .stage{display:flex;align-items:center;gap:16px;width:100%;justify-content:center;flex-wrap:wrap;}
+  .mascot{width:108px;height:108px;flex:none;}
+  .target{
+    flex:1;min-width:220px;text-align:center;
+    background:linear-gradient(180deg,#FBF8FF,#F1ECFF);
+    border:4px solid #EBE3FF;border-radius:22px;padding:18px 14px;
+  }
+  .word{font-family:'Fredoka';font-weight:700;font-size:clamp(2.2rem,9vw,3.6rem);letter-spacing:.04em;line-height:1;word-break:break-word;}
+  .word .ch{transition:color .12s,transform .12s;}
+  .word .done{color:var(--mint);}
+  .word .now{color:var(--ink);position:relative;}
+  .word .now::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:5px;border-radius:9px;background:var(--sun);}
+  .word .todo{color:#C7C2DE;}
+  .word.space-dot .now.is-space{min-width:.6em;display:inline-block;}
+  .word .is-space{display:inline-block;min-width:.5em;}
+  .word .is-space.now::after{background:var(--th);}
+  .finger-hint{margin-top:10px;font-weight:800;font-size:.95rem;display:flex;align-items:center;gap:8px;justify-content:center;}
+  .finger-hint .dot{width:16px;height:16px;border-radius:50%;box-shadow:inset 0 -2px 0 rgba(0,0,0,.12);}
+  .shake{animation:shake .3s;}
+
+  /* keyboard */
+  .kb{display:flex;flex-direction:column;gap:7px;align-items:center;width:100%;}
+  .kb-row{display:flex;gap:7px;justify-content:center;width:100%;}
+  .key{
+    flex:1;max-width:54px;min-width:0;aspect-ratio:1/1;
+    border:none;border-radius:14px;background:#F3F1FB;color:var(--ink);
+    font-family:'Fredoka';font-weight:600;font-size:clamp(.9rem,3.6vw,1.3rem);
+    text-transform:uppercase;cursor:pointer;position:relative;
+    box-shadow:0 4px 0 #DAD5EC;transition:transform .06s,box-shadow .06s,background .12s;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .key::after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:4px;border-radius:9px;background:var(--fg,#ccc);opacity:.55;}
+  .key.space{flex:none;width:56%;max-width:340px;aspect-ratio:auto;height:46px;border-radius:16px;}
+  .key:active,.key.press{transform:translateY(4px);box-shadow:0 0 0 #DAD5EC;}
+  .key.next{
+    background:var(--fg);color:#fff;box-shadow:0 5px 0 rgba(0,0,0,.18);
+    transform:translateY(-2px);
+  }
+  .key.next::after{opacity:0;}
+  .key.next.bounce{animation:bounce 1s infinite;}
+  .key.good{background:var(--mint)!important;color:#fff;}
+  .key.bad{background:var(--coral)!important;color:#fff;}
+
+  /* overlay */
+  .overlay{position:absolute;inset:0;background:rgba(43,45,107,.55);display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);border-radius:30px;z-index:5;}
+  .overlay.show{display:flex;animation:fade .25s;}
+  .modal{background:#fff;border-radius:26px;padding:26px 24px;text-align:center;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+  .modal .big{font-family:'Fredoka';font-weight:700;font-size:2rem;margin:6px 0 2px;}
+  .modal p{color:var(--ink-soft);font-weight:700;margin:0 0 16px;}
+  .modal .star{font-size:3rem;animation:pop .5s;}
+  .btn{
+    font-family:'Fredoka';font-weight:600;font-size:1.15rem;color:#fff;
+    background:var(--violet);border:none;border-radius:18px;
+    padding:12px 26px;cursor:pointer;box-shadow:0 6px 0 var(--violet-dark);
+  }
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--violet-dark);}
+
+  #fx{position:fixed;inset:0;pointer-events:none;z-index:50;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-size:.8rem;font-weight:700;}
+
+  @keyframes bounce{0%,100%{transform:translateY(-2px);}50%{transform:translateY(-9px);}}
+  @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+  @keyframes wobble{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}
+  @keyframes pop{0%{transform:scale(0);}70%{transform:scale(1.25);}100%{transform:scale(1);}}
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+  .mascot .eye,.mascot .mouth,.mascot .arm{transition:all .18s ease;}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important;}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hud">
+      <a class="back-pill" href="index.html">← Menu</a>
+      <div class="pill level-pill"><span class="lbl">Level</span><span class="val" id="levelVal">1</span></div>
+      <div class="pill points-pill"><span class="lbl">Punten</span><span class="val" id="pointsVal">0</span></div>
+      <div class="pill streak-pill" id="streakPill"><span class="lbl">Op rij</span><span class="val" id="streakVal">0</span><span id="flame">✨</span></div>
+      <button class="mute-btn" id="muteBtn" aria-label="Geluid aan of uit">🔊</button>
+    </div>
+
+    <div class="card">
+      <div class="level-name">
+        <h2 id="levelName">Thuisrij start</h2>
+        <p id="levelSub">De f en de j</p>
+      </div>
+      <div class="progress" aria-hidden="true"><i id="progBar"></i></div>
+
+      <div class="stage">
+        <svg class="mascot" id="mascot" viewBox="0 0 100 100" aria-hidden="true">
+          <ellipse cx="50" cy="92" rx="26" ry="5" fill="rgba(43,45,107,.12)"/>
+          <line class="arm" id="armL" x1="22" y1="58" x2="10" y2="66" stroke="#9aa0d6" stroke-width="6" stroke-linecap="round"/>
+          <line class="arm" id="armR" x1="78" y1="58" x2="90" y2="66" stroke="#9aa0d6" stroke-width="6" stroke-linecap="round"/>
+          <rect x="24" y="34" width="52" height="50" rx="16" fill="#6C9CFF"/>
+          <rect x="30" y="40" width="40" height="34" rx="11" fill="#EAF1FF"/>
+          <line x1="50" y1="26" x2="50" y2="18" stroke="#9aa0d6" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="50" cy="15" r="5" fill="var(--sun)" id="antenna"/>
+          <circle class="eye" id="eyeL" cx="42" cy="55" r="5.5" fill="#2B2D6B"/>
+          <circle class="eye" id="eyeR" cx="58" cy="55" r="5.5" fill="#2B2D6B"/>
+          <path class="mouth" id="mouth" d="M43 66 Q50 71 57 66" stroke="#2B2D6B" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        </svg>
+
+        <div class="target">
+          <div class="word" id="word">f</div>
+          <div class="finger-hint" id="fingerHint"><span class="dot" style="background:var(--il)"></span><span>linker wijsvinger</span></div>
+        </div>
+      </div>
+
+      <div class="kb" id="kb"></div>
+
+      <div class="overlay" id="overlay">
+        <div class="modal">
+          <div class="star" id="modalStar">⭐</div>
+          <div class="big" id="modalTitle">Level voltooid!</div>
+          <p id="modalText">Je gaat naar het volgende level.</p>
+          <button class="btn" id="modalBtn">Verder spelen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hint-foot">Typ op je echte toetsenbord of tik op de gekleurde toetsen. De kleur laat zien welke vinger je gebruikt.</div>
+  </div>
+  <canvas id="fx"></canvas>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- vinger-indeling (touch-typen) ---------- */
+  var fingerMap = {
+    q:'pl',a:'pl',z:'pl',
+    w:'rl',s:'rl',x:'rl',
+    e:'ml',d:'ml',c:'ml',
+    r:'il',t:'il',f:'il',g:'il',v:'il',b:'il',
+    y:'ir',u:'ir',h:'ir',j:'ir',n:'ir',m:'ir',
+    i:'mr',k:'mr',
+    o:'rr',l:'rr',
+    p:'pr',
+    ' ':'th'
+  };
+  var fingers = {
+    pl:{c:'var(--pl)',n:'linkerpink'},
+    rl:{c:'var(--rl)',n:'linker ringvinger'},
+    ml:{c:'var(--ml)',n:'linker middelvinger'},
+    il:{c:'var(--il)',n:'linker wijsvinger'},
+    ir:{c:'var(--ir)',n:'rechter wijsvinger'},
+    mr:{c:'var(--mr)',n:'rechter middelvinger'},
+    rr:{c:'var(--rr)',n:'rechter ringvinger'},
+    pr:{c:'var(--pr)',n:'rechterpink'},
+    th:{c:'var(--th)',n:'je duim (spatie)'}
+  };
+
+  /* ---------- levels ---------- */
+  var levels = [
+    {name:'Thuisrij start', sub:'De f en de j', type:'letters', pool:['f','j'], goal:12},
+    {name:'Linkerhand', sub:'a · s · d · f', type:'letters', pool:['a','s','d','f'], goal:14},
+    {name:'Rechterhand', sub:'j · k · l', type:'letters', pool:['j','k','l'], goal:14},
+    {name:'Hele thuisrij', sub:'a s d f g h j k l', type:'letters', pool:['a','s','d','f','g','h','j','k','l'], goal:18},
+    {name:'Eerste woordjes', sub:'woordjes van de thuisrij', type:'words', pool:['als','dal','gas','las','sla','lag','half','glas','gala','sjaal'], goal:8},
+    {name:'Bovenrij erbij', sub:'e r t u i o', type:'letters', pool:['e','r','t','u','i','o','a','s','d','f','j','k','l'], goal:18},
+    {name:'Leuke woordjes', sub:'korte woorden', type:'words', pool:['aap','vis','kat','hond','zon','boom','huis','maan','boek','melk','jas','tas','bal','pen','ster'], goal:10},
+    {name:'Langere woorden', sub:'flink typen', type:'words', pool:['school','vriend','spelen','lezen','tekenen','muziek','konijn','olifant','vakantie','verjaardag'], goal:10},
+    {name:'Zinnetjes', sub:'let op de spatie', type:'words', pool:['ik zie de zon','de kat slaapt','een grote boom','hallo daar','wij gaan spelen','de hond rent','ik kan typen'], goal:8}
+  ];
+
+  /* ---------- state ---------- */
+  var s = { lvl:0, points:0, streak:0, done:0, target:'', pos:0, muted:false, champ:false };
+
+  /* ---------- voortgang onthouden (hoogst bereikte level) ---------- */
+  var LVL_KEY = 'typmaatje_level';
+  try {
+    var saved = parseInt(localStorage.getItem(LVL_KEY) || '0', 10);
+    if (saved > 0 && saved <= levels.length-1) s.lvl = saved;
+  } catch(e){}
+  function saveLevel(){ try { localStorage.setItem(LVL_KEY, String(s.lvl)); } catch(e){} }
+
+  /* ---------- elements ---------- */
+  var $ = function(id){return document.getElementById(id);};
+  var elWord=$('word'), elKb=$('kb'), elFinger=$('fingerHint');
+  var elLevelVal=$('levelVal'), elPoints=$('pointsVal'), elStreak=$('streakVal'), elStreakPill=$('streakPill'), elFlame=$('flame');
+  var elLevelName=$('levelName'), elLevelSub=$('levelSub'), elProg=$('progBar');
+  var overlay=$('overlay'), modalTitle=$('modalTitle'), modalText=$('modalText'), modalBtn=$('modalBtn'), modalStar=$('modalStar');
+
+  /* ---------- keyboard build ---------- */
+  var rows=[['q','w','e','r','t','y','u','i','o','p'],['a','s','d','f','g','h','j','k','l'],['z','x','c','v','b','n','m']];
+  var keyEls={};
+  rows.forEach(function(r){
+    var row=document.createElement('div'); row.className='kb-row';
+    r.forEach(function(k){
+      var b=document.createElement('button'); b.className='key'; b.textContent=k;
+      b.style.setProperty('--fg', fingers[fingerMap[k]].c);
+      b.dataset.k=k;
+      b.addEventListener('click',function(){handle(k);});
+      keyEls[k]=b; row.appendChild(b);
+    });
+    elKb.appendChild(row);
+  });
+  var sb=document.createElement('button'); sb.className='key space'; sb.textContent='spatie';
+  sb.style.setProperty('--fg', fingers.th.c); sb.dataset.k=' ';
+  sb.addEventListener('click',function(){handle(' ');});
+  keyEls[' ']=sb;
+  var sbRow=document.createElement('div'); sbRow.className='kb-row'; sbRow.appendChild(sb); elKb.appendChild(sbRow);
+
+  /* ---------- sounds ---------- */
+  var actx=null;
+  function tone(freq,dur,type,vol){
+    if(s.muted) return;
+    try{
+      if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+      var o=actx.createOscillator(), g=actx.createGain();
+      o.type=type||'sine'; o.frequency.value=freq;
+      g.gain.value=vol||0.12;
+      o.connect(g); g.connect(actx.destination);
+      var t=actx.currentTime; o.start(t);
+      g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+      o.stop(t+dur);
+    }catch(e){}
+  }
+  function sGood(){ tone(660,0.12,'sine',0.10); setTimeout(function(){tone(880,0.10,'sine',0.10);},60); }
+  function sBad(){ tone(150,0.18,'sawtooth',0.08); }
+  function sLevel(){ [523,659,784,1046].forEach(function(f,i){ setTimeout(function(){tone(f,0.18,'triangle',0.12);}, i*120); }); }
+
+  /* ---------- render ---------- */
+  function pickTarget(){
+    var lv=levels[s.lvl]; var p=lv.pool;
+    var t; do{ t=p[Math.floor(Math.random()*p.length)]; }while(p.length>1 && t===s.target);
+    s.target=t; s.pos=0;
+  }
+  function nextChar(){ return s.target[s.pos]; }
+
+  function draw(){
+    var lv=levels[s.lvl];
+    // word with progress coloring
+    elWord.innerHTML='';
+    elWord.className='word';
+    for(var i=0;i<s.target.length;i++){
+      var ch=s.target[i];
+      var span=document.createElement('span');
+      var isSpace = ch===' ';
+      span.className='ch '+(i<s.pos?'done':(i===s.pos?'now':'todo'))+(isSpace?' is-space':'');
+      span.textContent= isSpace?'␣':ch;
+      elWord.appendChild(span);
+    }
+    // finger hint + keyboard highlight
+    Object.keys(keyEls).forEach(function(k){ keyEls[k].classList.remove('next','bounce','good','bad'); });
+    var nc=nextChar();
+    if(nc!=null){
+      var key=keyEls[nc];
+      if(key){ key.classList.add('next','bounce'); }
+      var f=fingers[fingerMap[nc]];
+      elFinger.innerHTML='<span class="dot" style="background:'+f.c+'"></span><span>'+f.n+'</span>';
+    }
+    // hud
+    elLevelVal.textContent=s.lvl+1;
+    elPoints.textContent=s.points;
+    elStreak.textContent=s.streak;
+    elLevelName.textContent=lv.name;
+    elLevelSub.textContent=lv.sub;
+    elProg.style.width=Math.min(100,(s.done/lv.goal)*100)+'%';
+    var mult=streakMult();
+    elFlame.textContent= s.streak>=15?'🔥':(s.streak>=5?'⚡':'✨');
+    elStreakPill.classList.toggle('hot', s.streak>=5);
+  }
+
+  function streakMult(){ return s.streak>=15?3:(s.streak>=5?2:1); }
+
+  /* ---------- mascot faces ---------- */
+  var mouth=$('mouth'), eyeL=$('eyeL'), eyeR=$('eyeR'), armL=$('armL'), armR=$('armR');
+  function face(mode){
+    if(mode==='happy'){ mouth.setAttribute('d','M41 65 Q50 74 59 65'); eyeL.setAttribute('r','5.5'); eyeR.setAttribute('r','5.5'); }
+    else if(mode==='oops'){ mouth.setAttribute('d','M43 70 Q50 64 57 70'); }
+    else if(mode==='wow'){ mouth.setAttribute('d','M44 64 Q50 78 56 64'); armL.setAttribute('y2','46'); armR.setAttribute('y2','46'); }
+    else { mouth.setAttribute('d','M43 66 Q50 71 57 66'); armL.setAttribute('y2','66'); armR.setAttribute('y2','66'); }
+    if(mode!=='wow'){ armL.setAttribute('y2','66'); armR.setAttribute('y2','66'); }
+  }
+  function blink(){ eyeL.setAttribute('ry','1'); eyeR.setAttribute('ry','1'); setTimeout(function(){eyeL.removeAttribute('ry');eyeR.removeAttribute('ry');},130); }
+  setInterval(function(){ if(Math.random()<0.5) blink(); }, 2600);
+
+  /* ---------- input handling ---------- */
+  var locked=false;
+  function handle(raw){
+    if(locked || overlay.classList.contains('show')) return;
+    var k=(raw||'').toLowerCase();
+    var nc=nextChar();
+    if(nc==null) return;
+    var key=keyEls[k];
+
+    if(k===nc){
+      // correct
+      if(key){ key.classList.add('good','press'); setTimeout(function(){ if(key) key.classList.remove('press'); },120); }
+      s.points += 10*streakMult();
+      s.streak += 1;
+      sGood(); face('happy');
+      s.pos += 1;
+
+      if(s.pos>=s.target.length){
+        // item complete
+        if(s.target.length>1) s.points += 25; // woordbonus
+        s.done += 1;
+        draw();
+        if(s.done>=levels[s.lvl].goal){ return levelUp(); }
+        locked=true;
+        setTimeout(function(){ pickTarget(); locked=false; face('idle'); draw(); }, 260);
+        return;
+      }
+      draw();
+    } else {
+      // wrong
+      if(key){ key.classList.add('bad','press'); setTimeout(function(){ if(key) key.classList.remove('bad','press'); },200); }
+      s.streak=0; sBad(); face('oops');
+      elWord.classList.add('shake'); setTimeout(function(){elWord.classList.remove('shake');},320);
+      draw(); setTimeout(function(){face('idle');},250);
+    }
+  }
+
+  /* ---------- level up ---------- */
+  function levelUp(){
+    face('wow'); sLevel(); confetti();
+    var last = s.lvl>=levels.length-1;
+    if(last){ s.champ=true; }
+    modalStar.textContent = last? '🏆' : '⭐';
+    modalTitle.textContent = last? 'Typkampioen!' : 'Level '+(s.lvl+1)+' gehaald!';
+    modalText.textContent = last
+      ? 'Wauw, je hebt alles uitgespeeld! Speel rustig door om nog beter te worden.'
+      : 'Je hebt '+s.points+' punten. Klaar voor het volgende level?';
+    modalBtn.textContent = last? 'Blijf oefenen' : 'Volgend level →';
+    overlay.classList.add('show');
+  }
+  modalBtn.addEventListener('click', function(){
+    overlay.classList.remove('show');
+    if(s.lvl<levels.length-1) s.lvl+=1;   // anders blijf op laatste level (eindeloos)
+    saveLevel();
+    s.done=0; face('idle'); pickTarget(); draw();
+  });
+
+  /* ---------- confetti ---------- */
+  var cv=$('fx'), cx=cv.getContext('2d'), parts=[];
+  function resize(){ cv.width=innerWidth; cv.height=innerHeight; }
+  resize(); addEventListener('resize',resize);
+  function confetti(){
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var cols=['#FFC83D','#FF6B5C','#2ED6A6','#3DC9FF','#B8A6FF','#FF7AB8'];
+    for(var i=0;i<120;i++){
+      parts.push({x:innerWidth/2,y:innerHeight*0.4,vx:(Math.random()-0.5)*9,vy:Math.random()*-9-3,
+        g:0.28,col:cols[i%cols.length],r:Math.random()*6+4,a:1,rot:Math.random()*6});
+    }
+    if(parts.length<=120) requestAnimationFrame(loop);
+  }
+  function loop(){
+    cx.clearRect(0,0,cv.width,cv.height);
+    for(var i=parts.length-1;i>=0;i--){
+      var p=parts[i]; p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.a-=0.012; p.rot+=0.2;
+      cx.save(); cx.globalAlpha=Math.max(0,p.a); cx.translate(p.x,p.y); cx.rotate(p.rot);
+      cx.fillStyle=p.col; cx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6); cx.restore();
+      if(p.a<=0||p.y>cv.height+30) parts.splice(i,1);
+    }
+    if(parts.length) requestAnimationFrame(loop); else cx.clearRect(0,0,cv.width,cv.height);
+  }
+
+  /* ---------- physical keyboard ---------- */
+  document.addEventListener('keydown', function(e){
+    if(e.key===' '||e.code==='Space'){ e.preventDefault(); handle(' '); return; }
+    if(e.key && e.key.length===1 && /[a-zA-Z]/.test(e.key)) handle(e.key);
+  });
+
+  /* ---------- mute ---------- */
+  $('muteBtn').addEventListener('click', function(){
+    s.muted=!s.muted; this.textContent=s.muted?'🔇':'🔊';
+    if(!s.muted && actx && actx.state==='suspended') actx.resume();
+  });
+
+  /* ---------- start ---------- */
+  pickTarget(); face('idle'); draw();
+})();
+</script>
+</body>
+</html>

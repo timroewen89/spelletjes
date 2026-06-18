@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boogschieten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#e23d6d;--violet-dark:#b82a53;}
+  .top{width:100%;max-width:720px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:720px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;cursor:crosshair;touch-action:none;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.94);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:440px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Pijl</span><span class="val" id="arrow">1/10</span></div>
+    <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🎯 Boogschieten</h1>
+    <p class="sub">Mik op de roos en klik om te schieten. Let op de wind!</p>
+    <canvas id="cv" width="700" height="460"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>🎯 Boogschieten</h2>
+      <p>Beweeg je vizier en klik (of tik) om te schieten. De wind duwt je pijl opzij — mik er een beetje tegenin. 10 pijlen, ga voor de hoogste score!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="endScreen">
+      <h2 id="endTitle">Klaar!</h2>
+      <p id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+  <div class="hint-foot">Bullseye = 10 punten • De pijltjes bovenaan tonen de windrichting.</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height;
+  const TX=W-160; const RINGS=[[20,10],[40,9],[62,8],[86,6],[112,4],[140,2]];
+  const BEST_KEY="boogschieten_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  document.getElementById("best").textContent=best;
+
+  let phase="idle", arrow=1, score=0, t=0, wind=0;
+  let aim={x:W/2,y:H/2}, ty=H/2, fly={x:0,y:0,hx:0,prog:0}, lastScore=0, popT=0;
+  const $=id=>document.getElementById(id);
+
+  function startGame(){ arrow=1; score=0; $("score").textContent=0; $("arrow").textContent="1/10";
+    $("startScreen").classList.add("hidden-el"); $("endScreen").classList.add("hidden-el"); newArrow(); }
+  function newArrow(){ phase="aim"; wind=(Math.random()*2-1)*28; }
+  function shoot(){
+    if(phase!=="aim") return;
+    const hx=TX, hy=aim.y + wind*0.0 ; // wind verticaal? nee: horizontale drift -> verschuif vizier-x effect
+    // pijl vliegt naar (TX, aim.y) maar wind verschuift het raakpunt verticaal niet; we verschuiven horizontaal->y via target vast x
+    fly={sx:20,sy:aim.y, hx:TX, hy:aim.y, prog:0, driftY:wind*0.5};
+    phase="fly";
+  }
+  function evaluate(){
+    const hitx=TX, hity=fly.hy+fly.driftY;
+    const cyT=ty; const d=Math.hypot(hitx-TX, hity-cyT);
+    let pts=0; for(const [r,p] of RINGS){ if(d<=r){ pts=p; break; } }
+    lastScore=pts; popT=1; score+=pts; $("score").textContent=score;
+    fly.finalY=hity;
+    arrow++;
+    if(arrow>10){ $("arrow").textContent="10/10"; phase="show"; setTimeout(endGame,1000); }
+    else { $("arrow").textContent=arrow+"/10"; phase="show"; setTimeout(newArrow,800); }
+  }
+  function endGame(){
+    let rec=false; if(score>best){best=score;rec=true;try{localStorage.setItem(BEST_KEY,String(best));}catch(e){}}
+    document.getElementById("best").textContent=best;
+    $("endTitle").textContent = score>=70?"🏆 Scherpschutter!":(score>=45?"💪 Goed gemikt!":"Goed geoefend!");
+    $("endText").innerHTML="Je schoot <b>"+score+"</b> punten!"+(rec?" 🏅 Nieuw record!":"");
+    $("endScreen").classList.remove("hidden-el");
+  }
+
+  function step(){
+    t+=0.024; ty=H/2+Math.sin(t)*50;
+    if(phase==="fly"){ fly.prog+=0.08; if(fly.prog>=1){ fly.prog=1; evaluate(); } }
+    if(popT>0) popT-=0.02;
+  }
+  function draw(){
+    const bg=ctx.createLinearGradient(0,0,0,H); bg.addColorStop(0,"#bfe8ff"); bg.addColorStop(1,"#dff3e0");
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#7ec97e"; ctx.fillRect(0,H-50,W,50);
+    // wind-indicator
+    ctx.textAlign="center"; ctx.font="700 14px Fredoka, sans-serif"; ctx.fillStyle="rgba(43,45,107,.8)";
+    const dir=wind<0?"◀":"▶"; const strength=Math.round(Math.abs(wind)/46*5);
+    ctx.fillText("Wind "+dir.repeat(Math.max(1,strength)),W/2,28);
+    // doel (paal + roos)
+    ctx.strokeStyle="#7a5a3a"; ctx.lineWidth=7; ctx.beginPath(); ctx.moveTo(TX,ty); ctx.lineTo(TX,H-50); ctx.stroke();
+    const cols=["#e23d6d","#fff","#3DC9FF","#fff","#2B2D6B","#fff"];
+    for(let i=RINGS.length-1;i>=0;i--){ ctx.fillStyle=cols[i%cols.length]; ctx.beginPath(); ctx.arc(TX,ty,RINGS[i][0],0,7); ctx.fill(); }
+    ctx.fillStyle="#FFC83D"; ctx.beginPath(); ctx.arc(TX,ty,8,0,7); ctx.fill();
+    // boog links
+    ctx.strokeStyle="#7a5a3a"; ctx.lineWidth=5; ctx.beginPath(); ctx.arc(24,H/2,40,-1.1,1.1); ctx.stroke();
+    // vizier
+    if(phase==="aim"){ ctx.strokeStyle="var(--violet)"; ctx.strokeStyle="#e23d6d"; ctx.lineWidth=2.5;
+      ctx.beginPath(); ctx.arc(aim.x,aim.y,14,0,7); ctx.moveTo(aim.x-20,aim.y); ctx.lineTo(aim.x+20,aim.y);
+      ctx.moveTo(aim.x,aim.y-20); ctx.lineTo(aim.x,aim.y+20); ctx.stroke(); }
+    // pijl
+    if(phase==="fly"){ const x=fly.sx+(fly.hx-fly.sx)*fly.prog; const y=fly.sy+(fly.driftY)*fly.prog;
+      ctx.strokeStyle="#5a4632"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(x-26,y); ctx.lineTo(x,y); ctx.stroke();
+      ctx.fillStyle="#2B2D6B"; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-7,y-4); ctx.lineTo(x-7,y+4); ctx.fill(); }
+    if((phase==="show") && fly.finalY!=null){ ctx.fillStyle="#2B2D6B"; ctx.beginPath(); ctx.arc(TX,fly.finalY,4,0,7); ctx.fill(); }
+    // score-pop
+    if(popT>0){ ctx.fillStyle="rgba(226,61,109,"+popT+")"; ctx.font="800 44px Fredoka, sans-serif"; ctx.textAlign="center";
+      ctx.fillText(lastScore>0?("+"+lastScore):"mis",W/2,90); }
+  }
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+  function toCv(cx,cy){ const r=cv.getBoundingClientRect(); return {x:(cx-r.left)*(W/r.width),y:(cy-r.top)*(H/r.height)}; }
+  cv.addEventListener("pointermove",e=>{ const p=toCv(e.clientX,e.clientY); aim=p; });
+  cv.addEventListener("pointerdown",e=>{ const p=toCv(e.clientX,e.clientY); aim=p; shoot(); });
+  $("startBtn").onclick=startGame; $("againBtn").onclick=startGame;
+  draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

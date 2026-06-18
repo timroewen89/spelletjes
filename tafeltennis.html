@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tafeltennis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#2aa6d6;--violet-dark:#2185ac;}
+  .top{width:100%;max-width:560px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;}
+  .who{font-family:'Fredoka',sans-serif;font-weight:600;color:var(--violet-dark);font-size:1.05rem;}
+  .card{background:#fff;width:100%;max-width:560px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:8px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;touch-action:none;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:420px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="who" id="who">Tegenstander</div>
+    <div class="pill"><span class="lbl">Jij</span><span class="val" id="scoreP">0</span></div>
+    <div class="pill"><span class="lbl">Tegen</span><span class="val" id="scoreA">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🏓 Tafeltennis</h1>
+    <canvas id="cv" width="560" height="460"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>🏓 Tafeltennis</h2>
+      <p>Schuif je batje onderaan met de muis (of vinger / pijltjes). Sneller dan tennis! Win tot <b>7 punten</b> en je krijgt een sterkere tegenstander.</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="msgScreen">
+      <h2 id="msgTitle"></h2>
+      <p id="msgText"></p>
+      <button class="bigbtn" id="msgBtn">Verder</button>
+    </div>
+  </div>
+  <div class="hint-foot">Beweeg links/rechts • Eerste bij 7 punten wint</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height;
+  const PW=92, PH=14;
+  const OPP=[
+    {name:"Pim Pingel 🐭", ai:4.2, ball:5.2},
+    {name:"Lotte Lob 🐰",   ai:5.2, ball:6.2},
+    {name:"Sven Smash 🐺",  ai:6.2, ball:7.3},
+    {name:"Yuki Yips 🐉",   ai:7.2, ball:8.4},
+    {name:"Meester Ming 🏆", ai:8.4, ball:9.6},
+  ];
+  const BEST_KEY="tafeltennis_beaten";
+  let beaten=0; try{beaten=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+
+  let opp=Math.min(beaten,OPP.length-1);
+  let px=W/2-PW/2, ax=W/2-PW/2, scoreP=0, scoreA=0;
+  let ball={}, running=false;
+  const $=id=>document.getElementById(id);
+
+  function resetBall(dir){
+    const o=OPP[opp];
+    ball={x:W/2,y:H/2,vx:(Math.random()*2-1)*3.4,vy:(dir||(Math.random()<.5?-1:1))*o.ball};
+  }
+  function newMatch(){
+    scoreP=0; scoreA=0; px=ax=W/2-PW/2;
+    $("scoreP").textContent=0; $("scoreA").textContent=0; $("who").textContent=OPP[opp].name;
+    resetBall(); running=true;
+    $("startScreen").classList.add("hidden-el"); $("msgScreen").classList.add("hidden-el");
+  }
+  function point(who){
+    if(who==="p"){scoreP++;$("scoreP").textContent=scoreP;} else {scoreA++;$("scoreA").textContent=scoreA;}
+    if(scoreP>=7||scoreA>=7){ running=false; setTimeout(matchOver,450); }
+    else resetBall(who==="p"?1:-1);
+  }
+  function matchOver(){
+    const won=scoreP>scoreA;
+    if(won){
+      if(opp+1>beaten){ beaten=opp+1; try{localStorage.setItem(BEST_KEY,String(beaten));}catch(e){} }
+      if(opp>=OPP.length-1){
+        $("msgTitle").textContent="🏆 Kampioen!"; $("msgText").textContent="Je hebt alle spelers verslagen! Speel gerust nog eens.";
+        $("msgBtn").textContent="Opnieuw"; $("msgBtn").onclick=()=>{opp=0;newMatch();};
+      } else {
+        $("msgTitle").textContent="🎉 Gewonnen!"; $("msgText").innerHTML="Je verslaat "+OPP[opp].name+"!<br>Klaar voor de volgende?";
+        $("msgBtn").textContent="Volgende tegenstander →"; $("msgBtn").onclick=()=>{opp++;newMatch();};
+      }
+    } else {
+      $("msgTitle").textContent="Helaas, verloren"; $("msgText").innerHTML="Je verliest van "+OPP[opp].name+". Nog een keer?";
+      $("msgBtn").textContent="Opnieuw proberen"; $("msgBtn").onclick=()=>newMatch();
+    }
+    $("msgScreen").classList.remove("hidden-el");
+  }
+  function step(){
+    if(!running) return;
+    const o=OPP[opp];
+    ball.x+=ball.vx; ball.y+=ball.vy;
+    if(ball.x<8){ball.x=8;ball.vx*=-1;} if(ball.x>W-8){ball.x=W-8;ball.vx*=-1;}
+    // speler-batje onder
+    if(ball.vy>0 && ball.y+8>H-30-PH && ball.y<H-20 && ball.x>px && ball.x<px+PW){
+      ball.y=H-30-PH-8; ball.vy=-Math.abs(ball.vy)*1.04; ball.vx+=((ball.x-(px+PW/2))/PW)*6;
+    }
+    // AI-batje boven
+    if(ball.vy<0 && ball.y-8<16+PH && ball.y>10 && ball.x>ax && ball.x<ax+PW){
+      ball.y=16+PH+8; ball.vy=Math.abs(ball.vy)*1.04; ball.vx+=((ball.x-(ax+PW/2))/PW)*6;
+    }
+    ball.vx=Math.max(-9,Math.min(9,ball.vx));
+    if(ball.y<0) point("p");
+    if(ball.y>H) point("a");
+    // AI volgt bal
+    if(ball.vy<0){ if(ax+PW/2<ball.x-6)ax+=o.ai; else if(ax+PW/2>ball.x+6)ax-=o.ai; }
+    else { if(ax+PW/2<W/2-6)ax+=o.ai*0.5; else ax-=o.ai*0.5; }
+    ax=Math.max(0,Math.min(W-PW,ax));
+  }
+  function draw(){
+    const L=14,T=14,Rt=W-14,B=H-14, NY=H/2;
+    // vloer
+    ctx.fillStyle="#0e3b6b"; ctx.fillRect(0,0,W,H);
+    // tafelrand (3D)
+    ctx.fillStyle="#13406f"; roundRect(8,10,W-16,H-16,12); ctx.fill();
+    // tafelblad
+    ctx.fillStyle="#1f5fa6"; roundRect(L,T,Rt-L,B-T,6); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.05)"; roundRect(L,T,Rt-L,(B-T)/2,6); ctx.fill();
+    // witte randlijnen + middenlijn (lengte)
+    ctx.strokeStyle="#fff"; ctx.lineWidth=4; roundRect(L,T,Rt-L,B-T,6); ctx.stroke();
+    ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W/2,T); ctx.lineTo(W/2,B); ctx.stroke();
+    // net (horizontaal, dwars)
+    ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1;
+    for(let x=L;x<=Rt;x+=6){ ctx.beginPath(); ctx.moveTo(x,NY-8); ctx.lineTo(x,NY+8); ctx.stroke(); }
+    for(let dy=-7;dy<=7;dy+=3){ ctx.beginPath(); ctx.moveTo(L,NY+dy); ctx.lineTo(Rt,NY+dy); ctx.stroke(); }
+    ctx.fillStyle="rgba(255,255,255,.9)"; ctx.fillRect(L,NY-9,Rt-L,2); ctx.fillRect(L,NY+7,Rt-L,2);
+    ctx.fillStyle="#2b2d6b"; ctx.fillRect(L-6,NY-9,6,18); ctx.fillRect(Rt,NY-9,6,18);   // netklemmen
+    // batjes
+    drawBat(px+PW/2, H-30-PH/2, 1, "#d23b3b");
+    drawBat(ax+PW/2, 16+PH/2, -1, "#222222");
+    // pingpongbal
+    const bx=ball.x||W/2, by=ball.y||H/2;
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(bx,by,7,0,7); ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.18)"; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(bx,by,7,0,7); ctx.stroke();
+  }
+  function drawBat(cx,cy,dir,rubber){
+    const rx=PW/2, ry=15;
+    ctx.strokeStyle="#8a5a2a"; ctx.lineWidth=11; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx,cy+dir*32); ctx.stroke();
+    ctx.fillStyle="#efe0c0"; ctx.beginPath(); ctx.ellipse(cx,cy,rx+3,ry+3,0,0,7); ctx.fill();
+    ctx.fillStyle=rubber; ctx.beginPath(); ctx.ellipse(cx,cy,rx,ry,0,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.18)"; ctx.beginPath(); ctx.ellipse(cx-rx*0.3,cy-ry*0.35,rx*0.45,ry*0.4,0,0,7); ctx.fill();
+  }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+
+  function movePaddle(clientX){
+    const r=cv.getBoundingClientRect();
+    const x=(clientX-r.left)*(W/r.width);
+    px=Math.max(0,Math.min(W-PW,x-PW/2));
+  }
+  cv.addEventListener("pointermove",e=>{ if(running) movePaddle(e.clientX); });
+  cv.addEventListener("pointerdown",e=>{ if(running) movePaddle(e.clientX); });
+  document.addEventListener("keydown",e=>{
+    if(!running) return;
+    if(e.key==="ArrowLeft"||e.key==="a"){px=Math.max(0,px-30);}
+    if(e.key==="ArrowRight"||e.key==="d"){px=Math.min(W-PW,px+30);}
+  });
+  $("startBtn").onclick=newMatch;
+  draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

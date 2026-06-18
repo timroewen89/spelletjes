@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelletjes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  body{
+    font-family:'Nunito',system-ui,sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%, #FFFDF8 0%, var(--cream) 55%, #FBEFDD 100%);
+    color:var(--ink);
+    min-height:100%;
+    display:flex;flex-direction:column;align-items:center;
+    padding:48px 18px;
+  }
+  header{text-align:center;margin-bottom:38px;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(2.4rem,7vw,3.6rem);letter-spacing:-.01em;}
+  header p{margin-top:8px;color:var(--ink-soft);font-weight:700;font-size:1.1rem;}
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:22px;width:100%;max-width:880px;
+  }
+  .card{
+    background:#fff;border-radius:28px;padding:28px 24px;
+    text-decoration:none;color:var(--ink);
+    display:flex;flex-direction:column;gap:10px;
+    box-shadow:0 14px 34px rgba(43,45,107,.10);
+    border:3px solid #fff;
+    transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+  }
+  .card:hover,.card:focus{
+    transform:translateY(-6px);
+    box-shadow:0 22px 46px rgba(43,45,107,.18);
+    border-color:var(--accent);outline:none;
+  }
+  .icon{
+    width:64px;height:64px;border-radius:20px;
+    display:flex;align-items:center;justify-content:center;font-size:2.1rem;
+    background:var(--accent-soft);
+  }
+  .card h2{font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.45rem;margin-top:4px;}
+  .card p{color:var(--ink-soft);font-weight:700;font-size:.95rem;line-height:1.45;}
+  .play{
+    margin-top:auto;align-self:flex-start;font-family:'Fredoka',sans-serif;font-weight:500;
+    color:#fff;background:var(--accent);padding:9px 20px;border-radius:999px;font-size:.95rem;
+    box-shadow:0 5px 0 var(--accent-dark);
+  }
+  .rekenrace{--accent:var(--coral);--accent-dark:#d6493b;--accent-soft:#ffe2dd;}
+  .typmaatje{--accent:var(--mint);--accent-dark:#16b487;--accent-soft:#d4f6ec;}
+  .voetbal{--accent:#3b82f6;--accent-dark:#2667cc;--accent-soft:#dbe9ff;}
+  .spelkampioen{--accent:var(--violet);--accent-dark:#6a5acf;--accent-soft:#e7e3ff;}
+  .homerun{--accent:#d9534f;--accent-dark:#b23f3c;--accent-soft:#ffe0de;}
+  .tennis{--accent:#5fae34;--accent-dark:#4a8a28;--accent-soft:#e2f3d6;}
+  .tafeltennis{--accent:#2aa6d6;--accent-dark:#2185ac;--accent-soft:#d6eefb;}
+  .basketbal{--accent:#ee7d2b;--accent-dark:#c66420;--accent-soft:#ffe6d2;}
+  .klokkijker{--accent:#5b6bd6;--accent-dark:#4655ad;--accent-soft:#e0e4fb;}
+  .weetjesquiz{--accent:#c558c5;--accent-dark:#a043a0;--accent-soft:#f6e0f6;}
+  .minigolf{--accent:#1fa98a;--accent-dark:#16806a;--accent-soft:#d3f1ea;}
+  .boogschieten{--accent:#e23d6d;--accent-dark:#b82a53;--accent-soft:#fcd9e3;}
+  .bowlen{--accent:#6d5ae0;--accent-dark:#5544b8;--accent-soft:#e3def9;}
+  .sprint{--accent:#f2a51e;--accent-dark:#cf8410;--accent-soft:#fff0cf;}
+  .tafelheld{--accent:#0ea5b5;--accent-dark:#0b8493;--accent-soft:#d2f0f4;}
+  .geld{--accent:#2fa84f;--accent-dark:#218038;--accent-soft:#d7f0de;}
+  .geheugen{--accent:#ec5aa0;--accent-dark:#c43f80;--accent-soft:#fbdcec;}
+  .woordrader{--accent:#7c4dff;--accent-dark:#5f33d6;--accent-soft:#e7deff;}
+  .vlaggen{--accent:#0e7490;--accent-dark:#0b5a72;--accent-soft:#d2eef3;}
+  footer{margin-top:40px;color:var(--ink-soft);font-weight:700;font-size:.9rem;}
+</style>
+</head>
+<body>
+  <header>
+    <h1>🎮 Spelletjes</h1>
+    <p>Kies een spel en klik om te spelen!</p>
+  </header>
+
+  <main class="grid">
+    <a class="card rekenrace" href="rekenrace.html">
+      <div class="icon">🧮</div>
+      <h2>Rekenrace</h2>
+      <p>Hoeveel sommen kraak je voordat de tijd om is? Reken zo snel als je kunt!</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card typmaatje" href="typtuin.html">
+      <div class="icon">⌨️</div>
+      <h2>Typmaatje</h2>
+      <p>Leer blind typen met Bliep. Oefen letter voor letter en haal alle levels!</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card voetbal" href="voetbal_fase1.html">
+      <div class="icon">⚽</div>
+      <h2>5 tegen 5</h2>
+      <p>Voetbal! Speel een potje vijf tegen vijf en scoor de winnende goal.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card spelkampioen" href="spelkampioen.html">
+      <div class="icon">🏆</div>
+      <h2>Spelkampioen</h2>
+      <p>Luister naar het woord, kijk goed… en spel het daarna helemaal goed!</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+    <a class="card homerun" href="homerun.html">
+      <div class="icon">⚾</div>
+      <h2>Homerun</h2>
+      <p>Sla de honkbal zo ver mogelijk! Eerst kracht, dan timing.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card tennis" href="tennis.html">
+      <div class="icon">🎾</div>
+      <h2>Tennis</h2>
+      <p>Win de wedstrijd en versla steeds een sterkere tegenstander.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card tafeltennis" href="tafeltennis.html">
+      <div class="icon">🏓</div>
+      <h2>Tafeltennis</h2>
+      <p>Snelle pingpong! Win en speel tegen sterkere spelers.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card basketbal" href="basketbal.html">
+      <div class="icon">🏀</div>
+      <h2>Basketbal</h2>
+      <p>Mik goed en scoor zoveel mogelijk in 30 seconden.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card klokkijker" href="klokkijker.html">
+      <div class="icon">🕐</div>
+      <h2>Klokkijker</h2>
+      <p>Leer de klok lezen, van hele uren tot vijf minuten.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card weetjesquiz" href="weetjesquiz.html">
+      <div class="icon">💡</div>
+      <h2>Weetjesquiz</h2>
+      <p>Leuke weetjes over dieren, ruimte en natuur. Hoeveel weet jij?</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card minigolf" href="minigolf.html">
+      <div class="icon">⛳</div>
+      <h2>Minigolf</h2>
+      <p>Sla de bal in zo min mogelijk slagen in de hole, over vier baantjes.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card boogschieten" href="boogschieten.html">
+      <div class="icon">🎯</div>
+      <h2>Boogschieten</h2>
+      <p>Mik op de roos en let op de wind. Schiet de hoogste score bij elkaar!</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card bowlen" href="bowlen.html">
+      <div class="icon">🎳</div>
+      <h2>Bowlen</h2>
+      <p>Kies de richting en gooi zoveel mogelijk kegels om. Ga voor de strike!</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card sprint" href="sprint.html">
+      <div class="icon">🏃</div>
+      <h2>Sprint 100 m</h2>
+      <p>Tik om en om op links en rechts en ren de 100 meter zo snel mogelijk.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card tafelheld" href="tafelheld.html">
+      <div class="icon">✖️</div>
+      <h2>Tafelheld</h2>
+      <p>Oefen de tafels van vermenigvuldiging en verdien badges.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card geld" href="geld.html">
+      <div class="icon">💰</div>
+      <h2>Slim met geld</h2>
+      <p>Tel de munten en biljetten bij elkaar op. Hoeveel geld zie je?</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card geheugen" href="geheugen.html">
+      <div class="icon">🧠</div>
+      <h2>Geheugenspel</h2>
+      <p>Draai de kaartjes om en vind alle paren met zo min mogelijk zetten.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card woordrader" href="woordrader.html">
+      <div class="icon">🔤</div>
+      <h2>Woordrader</h2>
+      <p>Zet de gehusselde letters in de goede volgorde tot het juiste woord.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+    <a class="card vlaggen" href="vlaggen.html">
+      <div class="icon">🌍</div>
+      <h2>Vlaggenquiz</h2>
+      <p>Van welk land is deze vlag? Raad het juiste land bij elke vlag.</p>
+      <span class="play">Spelen ▶</span>
+    </a>
+
+  </main>
+
+  <footer>Veel plezier! 🎉</footer>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bowlen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#6d5ae0;--violet-dark:#5544b8;}
+  .top{width:100%;max-width:520px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:520px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.94);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:400px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Beurt</span><span class="val" id="turn">1/5</span></div>
+    <div class="pill"><span class="lbl">Kegels</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🎳 Bowlen</h1>
+    <p class="sub">Klik om de richting te kiezen en gooi de bal naar de kegels.</p>
+    <canvas id="cv" width="520" height="560"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>🎳 Bowlen</h2>
+      <p>De pijl zwaait heen en weer — klik (of tik) op het juiste moment om te gooien. Je hebt 5 beurten; gooi zoveel mogelijk kegels om. Alle 10 = strike!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="endScreen">
+      <h2 id="endTitle">Klaar!</h2>
+      <p id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+  <div class="hint-foot">Max 50 kegels in 5 beurten.</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height, LL=60, LR=W-60, R=14, PR=11;
+  const BEST_KEY="bowlen_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  document.getElementById("best").textContent=best;
+
+  let phase="idle", turn=1, score=0, knocked=0;
+  let ang=0, angDir=1, ball={x:W/2,y:H-50,vx:0,vy:0}, pins=[];
+  const $=id=>document.getElementById(id);
+
+  function setupPins(){ pins=[]; const cx=W/2, top=95, dx=34, dy=34;
+    for(let row=0;row<4;row++){ for(let i=0;i<=row;i++){ pins.push({x:cx-row*dx/2+i*dx, y:top+row*dy, up:true}); } } }
+  function startGame(){ turn=1; score=0; $("score").textContent=0; $("turn").textContent="1/5";
+    $("startScreen").classList.add("hidden-el"); $("endScreen").classList.add("hidden-el"); newRoll(); }
+  function newRoll(){ setupPins(); knocked=0; ball={x:W/2,y:H-50,vx:0,vy:0}; ang=0; angDir=1; phase="aim"; }
+  function roll(){ if(phase!=="aim")return; const a=ang*Math.PI/180; ball.vx=Math.sin(a)*9; ball.vy=-10; phase="roll"; }
+
+  function knockAround(p){ const q=[p]; while(q.length){ const c=q.pop();
+    for(const o of pins){ if(o.up && Math.hypot(o.x-c.x,o.y-c.y)<36 && Math.random()<0.9){ o.up=false; knocked++; q.push(o); } } } }
+
+  function step(){
+    if(phase==="aim"){ ang+=angDir*1.0; if(ang>34){ang=34;angDir=-1;} if(ang<-34){ang=-34;angDir=1;} }
+    if(phase==="roll"){
+      ball.x+=ball.vx; ball.y+=ball.vy;
+      if(ball.x<LL+R){ball.x=LL+R;ball.vx=Math.abs(ball.vx)*0.6;} if(ball.x>LR-R){ball.x=LR-R;ball.vx=-Math.abs(ball.vx)*0.6;}
+      for(const p of pins){ if(p.up && Math.hypot(ball.x-p.x,ball.y-p.y)<R+PR){ p.up=false; knocked++; ball.vx+=(ball.x-p.x)*0.05; knockAround(p); } }
+      if(ball.y< 60){ endRoll(); }
+    }
+  }
+  function endRoll(){
+    phase="show"; score+=knocked; $("score").textContent=score;
+    if(turn>=5){ $("turn").textContent="5/5"; setTimeout(endGame,1100); }
+    else { turn++; $("turn").textContent=turn+"/5"; setTimeout(newRoll,1100); }
+  }
+  function endGame(){
+    let rec=false; if(score>best){best=score;rec=true;try{localStorage.setItem(BEST_KEY,String(best));}catch(e){}}
+    document.getElementById("best").textContent=best;
+    $("endTitle").textContent = score>=40?"🏆 Bowlingkoning!":(score>=25?"💪 Goed gegooid!":"Goed geoefend!");
+    $("endText").innerHTML="Je gooide <b>"+score+" kegels</b> om!"+(rec?" 🏅 Nieuw record!":"");
+    $("endScreen").classList.remove("hidden-el");
+  }
+  function draw(){
+    ctx.fillStyle="#caa46b"; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#e3c794"; ctx.fillRect(LL,0,LR-LL,H);
+    ctx.fillStyle="#b98e52"; ctx.fillRect(0,0,LL,H); ctx.fillRect(LR,0,W-LR,H);  // goten
+    ctx.strokeStyle="rgba(255,255,255,.4)"; ctx.lineWidth=2;
+    for(let i=1;i<5;i++){ ctx.beginPath(); ctx.moveTo(LL+(LR-LL)*i/5,0); ctx.lineTo(LL+(LR-LL)*i/5,H); ctx.stroke(); }
+    // kegels
+    for(const p of pins){ if(!p.up) continue;
+      ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(p.x,p.y,PR,0,7); ctx.fill();
+      ctx.strokeStyle="#e23d6d"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(p.x,p.y,PR,-0.6,0.6); ctx.stroke(); }
+    // richtpijl
+    if(phase==="aim"){ const a=ang*Math.PI/180; ctx.strokeStyle="#6d5ae0"; ctx.lineWidth=4; ctx.setLineDash([8,8]);
+      ctx.beginPath(); ctx.moveTo(ball.x,ball.y); ctx.lineTo(ball.x+Math.sin(a)*120,ball.y-Math.cos(a)*120); ctx.stroke(); ctx.setLineDash([]); }
+    // bal
+    ctx.fillStyle="#5544b8"; ctx.beginPath(); ctx.arc(ball.x,ball.y,R,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.4)"; ctx.beginPath(); ctx.arc(ball.x-4,ball.y-4,4,0,7); ctx.fill();
+  }
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+  cv.addEventListener("pointerdown",roll);
+  document.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){e.preventDefault();roll();} });
+  $("startBtn").onclick=startGame; $("againBtn").onclick=startGame;
+  setupPins(); draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

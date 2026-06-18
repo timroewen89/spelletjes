@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woordrader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#7c4dff;--violet-dark:#5f33d6;}
+  .top{width:100%;max-width:520px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:520px;border-radius:30px;padding:26px 24px 30px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--violet);transform:scale(1.3);}
+  .pic{font-size:3.6rem;margin-bottom:8px;}
+  .answer{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:62px;margin-bottom:14px;}
+  .slot{width:46px;height:56px;border-radius:12px;border:3px dashed var(--surface2);display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.7rem;color:var(--ink);text-transform:uppercase;}
+  .slot.filled{border-style:solid;border-color:var(--violet);background:#faf8ff;cursor:pointer;}
+  .answer.shake{animation:shake .35s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+  .tiles{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;}
+  .tile{width:50px;height:58px;border-radius:14px;border:none;background:var(--violet);color:#fff;cursor:pointer;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.7rem;text-transform:uppercase;box-shadow:0 5px 0 var(--violet-dark);}
+  .tile:active{transform:translateY(3px);box-shadow:0 2px 0 var(--violet-dark);}
+  .tile.used{visibility:hidden;}
+  .feedback{min-height:28px;font-family:'Fredoka',sans-serif;font-size:1.2rem;font-weight:600;margin-top:10px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .ghostbtn{background:var(--surface);color:var(--ink);box-shadow:0 5px 0 var(--surface2);}
+  .ghostbtn:active{box-shadow:0 2px 0 var(--surface2);}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top"><div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div></div>
+  <div class="card">
+    <h1>🔤 Woordrader</h1>
+    <p class="sub">Zet de letters in de goede volgorde!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <div id="startScreen">
+      <p class="sub">Je ziet een plaatje en door-elkaar-gehusselde letters. Maak het juiste woord! 10 woorden.</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+
+    <div id="playScreen" class="hidden-el">
+      <div class="pic" id="pic">🍎</div>
+      <div class="answer" id="answer"></div>
+      <div class="tiles" id="tiles"></div>
+      <div><button class="bigbtn ghostbtn" id="clearBtn">Wissen</button></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.2rem" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+  const WORDS=[
+    {w:"appel",e:"🍎"},{w:"boom",e:"🌳"},{w:"huis",e:"🏠"},{w:"maan",e:"🌙"},{w:"bloem",e:"🌸"},
+    {w:"trein",e:"🚂"},{w:"koek",e:"🍪"},{w:"ster",e:"⭐"},{w:"boot",e:"⛵"},{w:"banaan",e:"🍌"},
+    {w:"wortel",e:"🥕"},{w:"tijger",e:"🐯"},{w:"school",e:"🏫"},{w:"vlinder",e:"🦋"},{w:"kado",e:"🎁"}
+  ];
+  const TOTAL=10, BEST_KEY="woordrader_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  let queue=[], idx=0, score=0, cur=null, letters=[], answer=[], wrongOnce=false, locked=false;
+  const $=id=>document.getElementById(id);
+  function showBest(){ $("best").textContent=best>0?("🏅 Beste: "+best+" / "+TOTAL):""; } showBest();
+
+  const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
+  function buildLevelbar(){ const b=$("levelbar"); b.innerHTML="";
+    for(let i=0;i<TOTAL;i++){ const d=document.createElement("div"); d.className="dot"+(i<idx?" done":"")+(i===idx?" active":""); b.appendChild(d);} }
+
+  function render(){
+    cur=queue[idx]; wrongOnce=false; locked=false; answer=[];
+    buildLevelbar(); $("feedback").textContent=""; $("feedback").className="feedback"; $("pic").textContent=cur.e;
+    let sc; do{ sc=shuffle(cur.w.split("")); }while(sc.join("")===cur.w && cur.w.length>1);
+    letters=sc.map((ch,i)=>({ch,i,used:false}));
+    drawTiles(); drawAnswer();
+  }
+  function drawTiles(){
+    const t=$("tiles"); t.innerHTML="";
+    letters.forEach(l=>{ const b=document.createElement("button"); b.className="tile"+(l.used?" used":""); b.textContent=l.ch;
+      b.onclick=()=>{ if(locked||l.used) return; l.used=true; answer.push(l); drawTiles(); drawAnswer(); check(); }; t.appendChild(b); });
+  }
+  function drawAnswer(){
+    const a=$("answer"); a.innerHTML="";
+    for(let i=0;i<cur.w.length;i++){ const s=document.createElement("div");
+      if(i<answer.length){ s.className="slot filled"; s.textContent=answer[i].ch; const li=i;
+        s.onclick=()=>{ if(locked) return; const rem=answer.splice(li); rem.forEach(r=>r.used=false); drawTiles(); drawAnswer(); $("feedback").textContent=""; };
+      } else { s.className="slot"; s.textContent=""; }
+      a.appendChild(s);
+    }
+  }
+  function check(){
+    if(answer.length<cur.w.length) return;
+    const guess=answer.map(x=>x.ch).join(""); const fb=$("feedback");
+    if(guess===cur.w){
+      locked=true; if(!wrongOnce){ score++; $("score").textContent=score; }
+      fb.className="feedback good"; fb.textContent="✅ "+cur.w.toUpperCase()+"!";
+      idx++; buildLevelbar(); setTimeout(()=>{ if(idx>=TOTAL) endGame(); else render(); }, 950);
+    } else {
+      wrongOnce=true; fb.className="feedback bad"; fb.textContent="❌ Probeer nog eens";
+      const a=$("answer"); a.classList.add("shake"); setTimeout(()=>a.classList.remove("shake"),350);
+      setTimeout(()=>{ answer.forEach(r=>r.used=false); answer=[]; drawTiles(); drawAnswer(); },600);
+    }
+  }
+  function startGame(){ queue=shuffle([...WORDS]).slice(0,TOTAL); idx=0; score=0; $("score").textContent=0;
+    $("startScreen").classList.add("hidden-el"); $("endScreen").classList.add("hidden-el"); $("playScreen").classList.remove("hidden-el"); render(); }
+  function endGame(){
+    $("playScreen").classList.add("hidden-el"); $("endScreen").classList.remove("hidden-el");
+    let rec=false; if(score>best){best=score;rec=true;try{localStorage.setItem(BEST_KEY,String(best));}catch(e){}} showBest();
+    $("endEmoji").textContent=score===TOTAL?"🏆":(score>=7?"🎉":"💪");
+    $("endTitle").textContent=score===TOTAL?"Woordbaas!":(score>=7?"Goed gedaan!":"Blijf oefenen!");
+    $("endText").innerHTML="Je had <b>"+score+" van de "+TOTAL+"</b> in één keer goed!"+(rec&&score>0?" 🏅 record!":"");
+  }
+  $("clearBtn").onclick=()=>{ if(locked)return; answer.forEach(r=>r.used=false); answer=[]; drawTiles(); drawAnswer(); $("feedback").textContent=""; };
+  $("startBtn").onclick=startGame; $("againBtn").onclick=startGame;
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Homerun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#d9534f;--violet-dark:#b23f3c;}
+  .top{width:100%;max-width:720px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:720px;border-radius:28px;padding:18px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.94);border-radius:18px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:420px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Slag</span><span class="val" id="swing">1/5</span></div>
+    <div class="pill"><span class="lbl">Verste</span><span class="val" id="best">0 m</span></div>
+  </div>
+  <div class="card">
+    <h1>⚾ Homerun</h1>
+    <p class="sub">Sla de bal zo ver mogelijk! Eerst kracht, dan timing.</p>
+    <canvas id="cv" width="700" height="420"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>⚾ Homerun</h2>
+      <p>Klik 1× voor je <b>kracht</b>, klik nog eens voor de <b>timing</b>. Hoe dichter bij het groene vlak, hoe verder je slaat. Je hebt 5 slagen!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="endScreen">
+      <h2 id="endTitle">Goed geslagen!</h2>
+      <p id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+  <div class="hint-foot">Klik of druk op spatie om te slaan.</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height;
+  const GROUND=H-70, BX=70, BY=GROUND;        // batter positie
+  const MAXM=160;                              // veld toont tot 160 m
+  const BEST_KEY="homerun_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  document.getElementById("best").textContent=best+" m";
+
+  let phase="idle";   // idle | power | timing | fly | between
+  let powerV=0, powerDir=1, powerLock=0;
+  let timeV=0, timeDir=1;
+  let swing=1, furthest=0, total=0;
+  let ball={x:BX,y:BY-30,t:0,dist:0,flying:false,landX:0,peak:0};
+  let resultText="";
+
+  const $=id=>document.getElementById(id);
+
+  function startGame(){
+    swing=1; furthest=0; total=0;
+    $("startScreen").classList.add("hidden-el");
+    $("endScreen").classList.add("hidden-el");
+    $("swing").textContent="1/5";
+    newSwing();
+  }
+  function newSwing(){
+    phase="ready"; resultText=""; ball.flying=false; ball.x=BX; ball.y=BY-30;
+    $("swing").textContent=swing+"/5";
+  }
+  function act(){
+    if(phase==="ready"){ phase="power"; powerV=0; powerDir=1; }
+    else if(phase==="power"){ powerLock=powerV/100; phase="timing"; timeV=0; timeDir=1; }
+    else if(phase==="timing"){ doHit(); }
+  }
+  function doHit(){
+    // timing: groen vlak rond 0.5; acc 0..1
+    const dev=Math.abs(timeV/100-0.5)/0.5;   // 0 = perfect
+    const acc=Math.max(0,1-dev*1.15);
+    const quality=powerLock*(0.45+0.55*acc);
+    let dist=Math.round(quality*MAXM);
+    if(acc<0.12){ dist=Math.round(dist*0.25); }   // mistimed = zwakke tik
+    ball.dist=dist; ball.landX=BX+(dist/MAXM)*(W-BX-30);
+    ball.peak=Math.min(GROUND-40, 40+dist*1.6);
+    ball.t=0; ball.flying=true; phase="fly";
+    total+=dist; if(dist>furthest)furthest=dist;
+    if(dist>=150) resultText="HOMERUN! 🎉";
+    else if(dist>=110) resultText="Wat een knal! 💥";
+    else if(dist>=60) resultText="Lekkere klap!";
+    else if(acc<0.12) resultText="Net mis getimed…";
+    else resultText="Tikje…";
+  }
+  function afterLand(){
+    if(swing>=5){ endGame(); }
+    else { swing++; phase="between"; setTimeout(newSwing,900); }
+  }
+  function endGame(){
+    if(furthest>best){ best=furthest; try{localStorage.setItem(BEST_KEY,String(best));}catch(e){} }
+    document.getElementById("best").textContent=best+" m";
+    $("endTitle").textContent = furthest>=150?"🏆 Homerunheld!":(furthest>=90?"💪 Sterke slagman!":"Goed geoefend!");
+    $("endText").innerHTML = "Verste klap: <b>"+furthest+" m</b><br>Totaal: "+total+" m" +
+      (furthest>best?"":(furthest>=best?" 🏅 record!":""));
+    $("endScreen").classList.remove("hidden-el");
+    phase="idle";
+  }
+
+  // ---- tekenen ----
+  function draw(){
+    // lucht
+    const sky=ctx.createLinearGradient(0,0,0,GROUND);
+    sky.addColorStop(0,"#bfe8ff"); sky.addColorStop(1,"#e8f7ff");
+    ctx.fillStyle=sky; ctx.fillRect(0,0,W,GROUND);
+    // gras
+    ctx.fillStyle="#3DAA63"; ctx.fillRect(0,GROUND,W,H-GROUND);
+    ctx.fillStyle="#34995a"; for(let i=0;i<W;i+=40) ctx.fillRect(i,GROUND,20,H-GROUND);
+    // afstandspalen
+    ctx.font="600 12px Fredoka, sans-serif"; ctx.textAlign="center";
+    for(let m=25;m<=MAXM;m+=25){
+      const x=BX+(m/MAXM)*(W-BX-30);
+      ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x,GROUND); ctx.lineTo(x,GROUND-12); ctx.stroke();
+      ctx.fillStyle="rgba(43,45,107,.55)"; ctx.fillText(m+"m",x,GROUND+20);
+    }
+    // batter (simpel poppetje)
+    ctx.fillStyle="#2B2D6B"; ctx.beginPath(); ctx.arc(BX,BY-46,10,0,7); ctx.fill();
+    ctx.fillRect(BX-5,BY-38,10,26);
+    ctx.strokeStyle="#8b5a2b"; ctx.lineWidth=4; ctx.beginPath();
+    ctx.moveTo(BX+4,BY-30); ctx.lineTo(BX+22,BY-48); ctx.stroke();
+    // bal
+    if(phase==="fly"||resultText){
+      ctx.fillStyle="#fff"; ctx.strokeStyle="#d33"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(ball.x,ball.y,7,0,7); ctx.fill(); ctx.stroke();
+    }
+    // meters / instructie
+    drawUI();
+    if(resultText && phase!=="fly"){
+      ctx.fillStyle="rgba(43,45,107,.92)"; ctx.font="700 26px Fredoka, sans-serif"; ctx.textAlign="center";
+      ctx.fillText(resultText+"  ("+ball.dist+" m)",W/2,60);
+    }
+  }
+  function bar(x,y,w,h,val,col,zone){
+    ctx.fillStyle="rgba(255,255,255,.75)"; roundRect(x,y,w,h,8); ctx.fill();
+    if(zone){ ctx.fillStyle="rgba(46,214,166,.55)"; ctx.fillRect(x+w*0.40,y,w*0.20,h); }
+    ctx.fillStyle=col; ctx.fillRect(x+2,y+2,(w-4)*val,h-4);
+  }
+  function marker(x,y,w,h,pos){ ctx.fillStyle="#2B2D6B"; ctx.fillRect(x+(w*pos)-2,y-3,4,h+6); }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function drawUI(){
+    const bx=W/2-150, bw=300, h=22;
+    ctx.textAlign="center"; ctx.fillStyle="rgba(43,45,107,.85)"; ctx.font="700 14px Fredoka, sans-serif";
+    if(phase==="ready"){ ctx.fillText("Klik om te beginnen met slaan",W/2,H-22); }
+    else if(phase==="power"){ ctx.fillText("KRACHT — klik om vast te zetten",W/2,H-40);
+      bar(bx,H-32,bw,h,powerV/100,"#FF6B5C",false); }
+    else if(phase==="timing"){ ctx.fillText("TIMING — klik in het groene vlak!",W/2,H-40);
+      bar(bx,H-32,bw,h,1,"rgba(255,255,255,0)",true); marker(bx,H-32,bw,h,timeV/100); }
+  }
+
+  // ---- loop ----
+  let lastReady=true;
+  function loop(){
+    if(phase==="power"){ powerV+=powerDir*2.6; if(powerV>=100){powerV=100;powerDir=-1;} if(powerV<=0){powerV=0;powerDir=1;} }
+    if(phase==="timing"){ timeV+=timeDir*3.4; if(timeV>=100){timeV=100;timeDir=-1;} if(timeV<=0){timeV=0;timeDir=1;} }
+    if(phase==="fly"){
+      ball.t+=0.022;
+      const t=ball.t;
+      if(t>=1){ ball.x=ball.landX; ball.y=BY-30; phase="land"; afterLand(); }
+      else{ ball.x=BX+(ball.landX-BX)*t; ball.y=(BY-30)-Math.sin(t*Math.PI)*ball.peak; }
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  cv.addEventListener("pointerdown",()=>{ if(phase!=="idle"&&phase!=="fly"&&phase!=="between"&&phase!=="land") act(); });
+  document.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault();
+    if(phase!=="idle"&&phase!=="fly"&&phase!=="between"&&phase!=="land") act(); }});
+  $("startBtn").onclick=startGame;
+  $("againBtn").onclick=startGame;
+  draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

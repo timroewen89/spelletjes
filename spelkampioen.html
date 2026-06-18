@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelkampioen — leer spellen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#8b7bff;--violet-dark:#6a5acf;}
+  .top{
+    width:100%;max-width:620px;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .stats{display:flex;gap:10px;}
+  .points-pill{background:linear-gradient(180deg,#FFE9A8,#FFD45E);}
+  .points-pill .val{color:#8a5b00;}
+  .card{
+    background:#fff;width:100%;max-width:620px;border-radius:30px;
+    padding:26px 24px 32px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;
+  }
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:20px;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:14px;min-height:1.1em;}
+  .levelbar{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap;}
+  .dot{width:13px;height:13px;border-radius:50%;background:#EFEAF7;transition:transform .15s,background .15s;}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--violet);transform:scale(1.35);}
+  .stage{min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+  .wordshow{
+    font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(2.4rem,11vw,3.4rem);
+    letter-spacing:6px;color:var(--violet-dark);min-height:64px;
+  }
+  .hint{color:var(--ink-soft);font-weight:700;font-size:1rem;}
+  .speakbtn{background:var(--sky);box-shadow:0 6px 0 #2aa6d6;font-size:1rem;padding:12px 22px;}
+  .speakbtn:active{box-shadow:0 2px 0 #2aa6d6;}
+  .replay{background:var(--sun);box-shadow:0 6px 0 #d6a420;color:#7a5200;}
+  .replay:active{box-shadow:0 2px 0 #d6a420;}
+  .answerrow{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+  input[type=text]{
+    font-family:'Fredoka',sans-serif;font-size:1.8rem;text-align:center;padding:12px 16px;
+    border:3px solid #EBE3FF;border-radius:14px;width:min(360px,80%);outline:none;
+    letter-spacing:3px;text-transform:lowercase;color:var(--ink);
+  }
+  input[type=text]:focus{border-color:var(--violet);}
+  .feedback{min-height:34px;font-family:'Fredoka',sans-serif;font-size:1.3rem;font-weight:600;margin-top:14px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .reveal{font-size:1.4rem;letter-spacing:4px;color:var(--violet-dark);}
+  .end .big{font-size:4rem;}
+</style>
+</head>
+<body>
+  <div class="top">
+    <a class="back" href="index.html">← Menu</a>
+    <div class="stats">
+      <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+      <div class="pill points-pill"><span class="lbl">Op rij</span><span class="val" id="streak">0</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>🏆 Spelkampioen</h1>
+    <p class="sub">Luister goed, kijk goed… en spel het woord!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START -->
+    <div id="startScreen" class="stage">
+      <p class="hint">Je hoort een woord en ziet het heel even. Typ het daarna goed!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+
+    <!-- PLAY -->
+    <div id="playScreen" class="stage hidden-el">
+      <div class="wordshow" id="wordshow"></div>
+      <div class="hint" id="playHint">Kijk goed…</div>
+
+      <div id="inputArea" class="hidden-el">
+        <button class="bigbtn replay" id="replayBtn">🔊 Nog eens horen</button>
+        <div class="answerrow">
+          <input type="text" id="answer" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="typ hier…">
+        </div>
+        <div class="answerrow"><button class="bigbtn" id="checkBtn">Controleer ✓</button></div>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div id="nextArea" class="hidden-el"><button class="bigbtn" id="nextBtn">Volgende →</button></div>
+    </div>
+
+    <!-- END -->
+    <div id="endScreen" class="stage end hidden-el">
+      <div class="big" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn replay" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+  // Woordenlijst groep 3-4 — makkelijk naar iets lastiger
+  const WORDS = [
+    "kat","vis","boom","maan","huis","boot","kaas","muis","poes","bal",
+    "zon","roos","neus","appel","tafel","stoel","kindje","water","school",
+    "vogel","wolk","bloem","koek","bril","lamp","deur","bord","sok","trap"
+  ];
+
+  const TOTAL = 10;
+  const BEST_KEY = "spelkampioen_best";
+  let queue = [], idx = 0, score = 0, streak = 0, current = "";
+  let voice = null;
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e){}
+
+  const $ = id => document.getElementById(id);
+  const startScreen=$("startScreen"), playScreen=$("playScreen"), endScreen=$("endScreen");
+
+  function showBest(){ $("best").textContent = best>0 ? ("🏅 Beste score: "+best+" / "+TOTAL) : ""; }
+  showBest();
+
+  // Kies een Nederlandse stem als die er is
+  function pickVoice(){
+    const vs = speechSynthesis.getVoices();
+    voice = vs.find(v=>/nl[-_]/i.test(v.lang)) || vs.find(v=>/nl/i.test(v.lang)) || null;
+  }
+  if ('speechSynthesis' in window){
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+  }
+  function speak(text){
+    if(!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "nl-NL"; u.rate = .85; u.pitch = 1.05;
+    if(voice) u.voice = voice;
+    speechSynthesis.speak(u);
+  }
+
+  function buildLevelbar(){
+    const bar=$("levelbar"); bar.innerHTML="";
+    for(let i=0;i<TOTAL;i++){
+      const d=document.createElement("div");
+      d.className="dot"+(i<idx?" done":"")+(i===idx?" active":"");
+      bar.appendChild(d);
+    }
+  }
+
+  function shuffle(a){ return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]); }
+
+  function startGame(){
+    queue = shuffle([...new Set(WORDS)]).slice(0, TOTAL);
+    idx=0; score=0; streak=0;
+    $("score").textContent=0; $("streak").textContent=0;
+    startScreen.classList.add("hidden-el");
+    endScreen.classList.add("hidden-el");
+    playScreen.classList.remove("hidden-el");
+    nextWord();
+  }
+
+  function nextWord(){
+    current = queue[idx];
+    buildLevelbar();
+    $("feedback").textContent=""; $("feedback").className="feedback";
+    $("nextArea").classList.add("hidden-el");
+    $("inputArea").classList.add("hidden-el");
+    $("answer").value="";
+    const ws=$("wordshow");
+    ws.innerHTML = current;
+    $("playHint").textContent="Kijk goed…";
+    speak(current);
+    // toon ~2.5s daarna verbergen
+    setTimeout(()=>{
+      ws.innerHTML="🤫";
+      $("playHint").textContent="Nu jij! Typ het woord.";
+      $("inputArea").classList.remove("hidden-el");
+      $("answer").focus();
+    }, 2500);
+  }
+
+  function check(){
+    const ans=$("answer").value.trim().toLowerCase();
+    if(!ans) return;
+    const fb=$("feedback");
+    $("inputArea").classList.add("hidden-el");
+    if(ans===current){
+      score++; streak++;
+      $("score").textContent=score; $("streak").textContent=streak;
+      fb.className="feedback good";
+      fb.innerHTML = (streak>=3?"🔥 ":"✅ ") + ["Top!","Goed zo!","Knap!","Super!","Helemaal goed!"][Math.floor(Math.random()*5)];
+    } else {
+      streak=0; $("streak").textContent=0;
+      fb.className="feedback bad";
+      fb.innerHTML = "❌ Bijna! Het was:<br><span class='reveal'>"+current+"</span>";
+      speak(current);
+    }
+    idx++;
+    buildLevelbar();
+    if(idx>=TOTAL){ setTimeout(endGame, 1400); }
+    else { $("nextArea").classList.remove("hidden-el"); }
+  }
+
+  function endGame(){
+    playScreen.classList.add("hidden-el");
+    endScreen.classList.remove("hidden-el");
+    let newRecord = false;
+    if(score>best){ best=score; newRecord=true; try{ localStorage.setItem(BEST_KEY, String(best)); }catch(e){} }
+    showBest();
+    $("endText").textContent = "Je had "+score+" van de "+TOTAL+" goed!" + (newRecord && score>0 ? " 🏅 Nieuw record!" : "");
+    if(score===TOTAL){ $("endEmoji").textContent="🏆"; $("endTitle").textContent="Spelkampioen!"; }
+    else if(score>=7){ $("endEmoji").textContent="🎉"; $("endTitle").textContent="Goed gedaan!"; }
+    else { $("endEmoji").textContent="💪"; $("endTitle").textContent="Blijf oefenen!"; }
+  }
+
+  $("startBtn").onclick=startGame;
+  $("checkBtn").onclick=check;
+  $("replayBtn").onclick=()=>speak(current);
+  $("nextBtn").onclick=()=>{ idx<TOTAL && nextWord(); };
+  $("againBtn").onclick=startGame;
+  $("answer").addEventListener("keydown",e=>{ if(e.key==="Enter") check(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+/* =====================================================================
+   Gedeelde huisstijl voor ALLE spelletjes — één bron voor de look & feel.
+   Per spel: link dit bestand in <head> en zet in een eigen <style> alleen:
+     - de signatuurkleur:  :root{ --violet:#xxx; --violet-dark:#yyy; }
+     - eventueel de breedte: :root{ --maxw:720px; }
+     - de spel-specifieke opmaak (speelveld, canvas, klok, kaartjes, enz.)
+   Wijzig je hier iets, dan verandert het in elk spel tegelijk.
+   ===================================================================== */
+:root{
+  --cream:#FFF8EE; --ink:#2B2D6B; --ink-soft:#6A6CA8;
+  --sun:#FFC83D; --coral:#FF6B5C; --mint:#2ED6A6; --sky:#3DC9FF;
+  --violet:#8b7bff; --violet-dark:#6a5acf;   /* standaard accent; overschrijf per spel */
+  --good:#16a34a; --bad:#dc2626;
+  --surface:#F3F1FB; --surface2:#EBE7FB;
+  --maxw:620px;                              /* max. breedte van top-balk/kaart */
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'Nunito',system-ui,sans-serif;color:var(--ink);
+  background:radial-gradient(120% 120% at 50% 0%, #FFFDF8 0%, var(--cream) 55%, #FBEFDD 100%);
+  min-height:100%;display:flex;flex-direction:column;align-items:center;padding:18px;gap:12px;
+}
+
+/* Menuknop linksboven (verplicht in elk spel) */
+.back{
+  position:fixed;top:14px;left:14px;z-index:10;
+  font-family:'Fredoka',sans-serif;font-weight:500;font-size:.95rem;color:var(--ink);
+  text-decoration:none;background:#fff;border-radius:14px;padding:8px 14px;box-shadow:0 5px 0 rgba(43,45,107,.10);
+}
+.back:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(43,45,107,.10);}
+
+/* Bovenbalk met statistiek-pills */
+.top{width:100%;max-width:var(--maxw);display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:6px;}
+.pill{background:#fff;border-radius:16px;padding:8px 14px;display:flex;align-items:center;gap:7px;font-weight:800;box-shadow:0 5px 0 rgba(43,45,107,.08);}
+.pill .lbl{font-size:.7rem;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);}
+.pill .val{font-family:'Fredoka',sans-serif;font-size:1.3rem;line-height:1;}
+
+/* Indrukbare knop in de signatuurkleur (+ secundaire varianten) */
+.bigbtn{
+  font-family:'Fredoka',sans-serif;font-weight:500;border:none;cursor:pointer;color:#fff;
+  background:var(--violet);padding:14px 30px;border-radius:16px;font-size:1.15rem;
+  box-shadow:0 6px 0 var(--violet-dark);transition:transform .06s;
+}
+.bigbtn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--violet-dark);}
+.bigbtn.sun{background:var(--sun);color:#7a5200;box-shadow:0 6px 0 #d6a420;}
+.bigbtn.sun:active{box-shadow:0 2px 0 #d6a420;}
+.bigbtn.sky{background:var(--sky);box-shadow:0 6px 0 #2aa6d6;}
+.bigbtn.sky:active{box-shadow:0 2px 0 #2aa6d6;}
+.bigbtn.ghostbtn{background:var(--surface);color:var(--ink);box-shadow:0 5px 0 var(--surface2);}
+.bigbtn.ghostbtn:active{box-shadow:0 2px 0 var(--surface2);}
+
+.hidden-el{display:none;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}

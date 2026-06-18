@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Basketbal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#ee7d2b;--violet-dark:#c66420;}
+  .top{width:100%;max-width:720px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:720px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.94);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:440px;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Tijd</span><span class="val" id="time">30</span></div>
+    <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🏀 Basketbal</h1>
+    <p class="sub">Kies de hoek, dan de kracht. De stippellijn helpt je mikken!</p>
+    <canvas id="cv" width="700" height="440"></canvas>
+    <div class="overlay" id="startScreen">
+      <h2>🏀 Basketbal</h2>
+      <p>Klik 1× voor de <b>hoek</b>, klik nog eens voor de <b>kracht</b>. Scoor zoveel mogelijk in 30 seconden!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+    <div class="overlay hidden-el" id="endScreen">
+      <h2 id="endTitle">Tijd is om!</h2>
+      <p id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+  <div class="hint-foot">Klik of spatie • Stippellijn = waar de bal heen gaat</div>
+
+<script>
+  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  const W=cv.width, H=cv.height;
+  const FLOOR=H-30, LX=80, LY=FLOOR-14, R=13, G=0.42;
+  const BEST_KEY="basketbal_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  document.getElementById("best").textContent=best;
+
+  let phase="idle"; // idle|aim|power|shoot
+  let angle=45, angDir=1, power=0, powDir=1, lockAng=45;
+  let rim={x:W-110,y:H*0.45,half:26};
+  let ball={x:LX,y:LY,vx:0,vy:0};
+  let score=0, time=30, timer=null, prevY=LY, flash=0, flashGood=true;
+  const $=id=>document.getElementById(id);
+
+  function startGame(){
+    score=0; time=30; phase="aim"; angle=45; angDir=1;
+    $("score").textContent=0; $("time").textContent=30;
+    $("startScreen").classList.add("hidden-el"); $("endScreen").classList.add("hidden-el");
+    moveRim(); resetBall();
+    clearInterval(timer); timer=setInterval(()=>{ time--; $("time").textContent=time; if(time<=0)endGame(); },1000);
+  }
+  function resetBall(){ ball={x:LX,y:LY,vx:0,vy:0}; }
+  function moveRim(){ rim.y=H*0.30+Math.random()*H*0.32; rim.x=W-90-Math.random()*120; }
+  function act(){
+    if(phase==="aim"){ lockAng=angle; phase="power"; power=0; powDir=1; }
+    else if(phase==="power"){
+      const p=0.45+power/100*0.85; const v=10+p*15;
+      const a=lockAng*Math.PI/180;
+      ball.vx=Math.cos(a)*v; ball.vy=-Math.sin(a)*v; prevY=ball.y; phase="shoot";
+    }
+  }
+  function endGame(){
+    clearInterval(timer); phase="idle";
+    let rec=false; if(score>best){best=score;rec=true;try{localStorage.setItem(BEST_KEY,String(best));}catch(e){}}
+    document.getElementById("best").textContent=best;
+    $("endTitle").textContent = score>=20?"🏆 Topscorer!":(score>=10?"💪 Goed gemikt!":"Goed geoefend!");
+    $("endText").innerHTML = "Je scoorde <b>"+score+"</b> keer!"+(rec?" 🏅 Nieuw record!":"");
+    $("endScreen").classList.remove("hidden-el");
+  }
+
+  function step(){
+    if(phase==="aim"){ angle+=angDir*0.9; if(angle>=75){angle=75;angDir=-1;} if(angle<=20){angle=20;angDir=1;} }
+    if(phase==="power"){ power+=powDir*2.4; if(power>=100){power=100;powDir=-1;} if(power<=0){power=0;powDir=1;} }
+    if(phase==="shoot"){
+      prevY=ball.y;
+      ball.vy+=G; ball.x+=ball.vx; ball.y+=ball.vy;
+      // score: dalend door de ring
+      if(ball.vy>0 && prevY<rim.y && ball.y>=rim.y && Math.abs(ball.x-rim.x)<rim.half-2){
+        score++; $("score").textContent=score; flash=1; flashGood=true; nextShot(); return;
+      }
+      // backboard botsing (rechts van de ring)
+      const bbx=rim.x+rim.half+6;
+      if(ball.x+R>bbx && ball.x<bbx+12 && ball.y>rim.y-60 && ball.y<rim.y+8 && ball.vx>0){ ball.vx*=-0.5; ball.x=bbx-R; }
+      // mis: op de grond of buiten beeld
+      if(ball.y>FLOOR || ball.x>W+40){ flash=1; flashGood=false; nextShot(); return; }
+    }
+    if(flash>0) flash-=0.04;
+  }
+  function nextShot(){ if(time>0){ phase="aim"; angle=45; angDir=1; moveRim(); resetBall(); } }
+
+  function preview(){
+    const a=(phase==="power"?lockAng:angle)*Math.PI/180;
+    const p=(phase==="power"?(0.45+power/100*0.85):0.62); const v=10+p*15;
+    let x=LX,y=LY,vx=Math.cos(a)*v,vy=-Math.sin(a)*v;
+    ctx.fillStyle="rgba(43,45,107,.35)";
+    for(let i=0;i<60;i++){ vy+=G; x+=vx; y+=vy; if(y>FLOOR||x>W)break; if(i%3===0){ctx.beginPath();ctx.arc(x,y,2.5,0,7);ctx.fill();} }
+  }
+  function draw(){
+    // achtergrond zaal
+    const bg=ctx.createLinearGradient(0,0,0,FLOOR); bg.addColorStop(0,"#ffe6c2"); bg.addColorStop(1,"#ffd79a");
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,FLOOR);
+    ctx.fillStyle="#c8843b"; ctx.fillRect(0,FLOOR,W,H-FLOOR);
+    ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(0,FLOOR); ctx.lineTo(W,FLOOR); ctx.stroke();
+    // paal + backboard + ring
+    ctx.strokeStyle="#6b7280"; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(rim.x+rim.half+12,rim.y-50); ctx.lineTo(rim.x+rim.half+12,FLOOR); ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.strokeStyle="#2B2D6B"; ctx.lineWidth=3;
+    ctx.fillRect(rim.x+rim.half+4,rim.y-54,12,48); ctx.strokeRect(rim.x+rim.half+4,rim.y-54,12,48);
+    // ring
+    ctx.strokeStyle="#FF6B5C"; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(rim.x-rim.half,rim.y); ctx.lineTo(rim.x+rim.half,rim.y); ctx.stroke();
+    ctx.fillStyle="rgba(255,107,92,.85)";
+    ctx.beginPath(); ctx.arc(rim.x-rim.half,rim.y,4,0,7); ctx.arc(rim.x+rim.half,rim.y,4,0,7); ctx.fill();
+    // net
+    ctx.strokeStyle="rgba(255,255,255,.7)"; ctx.lineWidth=1.5;
+    for(let i=-2;i<=2;i++){ ctx.beginPath(); ctx.moveTo(rim.x+i*(rim.half/2.5),rim.y); ctx.lineTo(rim.x+i*(rim.half/4),rim.y+24); ctx.stroke(); }
+    // mik-preview
+    if(phase==="aim"||phase==="power") preview();
+    // bal
+    ctx.fillStyle="#e8772a"; ctx.beginPath(); ctx.arc(ball.x,ball.y,R,0,7); ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.35)"; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ball.x-R,ball.y); ctx.lineTo(ball.x+R,ball.y); ctx.moveTo(ball.x,ball.y-R); ctx.lineTo(ball.x,ball.y+R); ctx.stroke();
+    // meters
+    ctx.textAlign="center"; ctx.font="700 14px Fredoka, sans-serif"; ctx.fillStyle="rgba(43,45,107,.85)";
+    if(phase==="aim"){ ctx.fillText("HOEK — klik om te kiezen",W/2,H-8); }
+    else if(phase==="power"){ ctx.fillText("KRACHT — klik om te schieten",W/2-110,H-8);
+      const bx=W/2,bw=200,bh=16,by=H-22; ctx.fillStyle="rgba(255,255,255,.8)"; roundRect(bx,by,bw,bh,8); ctx.fill();
+      ctx.fillStyle="#FF6B5C"; ctx.fillRect(bx+2,by+2,(bw-4)*power/100,bh-4); }
+    // flits bij score/mis
+    if(flash>0){ ctx.fillStyle=(flashGood?"rgba(46,214,166,":"rgba(220,38,38,")+(0.3*flash)+")"; ctx.fillRect(0,0,W,H);
+      if(flashGood){ctx.fillStyle="rgba(22,163,74,"+flash+")";ctx.font="800 40px Fredoka, sans-serif";ctx.fillText("SCORE! 🎉",W/2,80);} }
+  }
+  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function loop(){ step(); draw(); requestAnimationFrame(loop); }
+
+  cv.addEventListener("pointerdown",()=>{ if(phase==="aim"||phase==="power") act(); });
+  document.addEventListener("keydown",e=>{ if((e.key===" "||e.key==="Enter")&&(phase==="aim"||phase==="power")){e.preventDefault();act();} });
+  $("startBtn").onclick=startGame; $("againBtn").onclick=startGame;
+  draw(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

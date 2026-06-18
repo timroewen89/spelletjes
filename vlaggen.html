@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vlaggenquiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#0e7490;--violet-dark:#0b5a72;--maxw:560px;}
+  .card{background:#fff;width:100%;max-width:560px;border-radius:30px;padding:26px 24px 30px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);} .dot.active{background:var(--violet);transform:scale(1.3);}
+  .flag{width:240px;max-width:80%;aspect-ratio:3/2;margin:4px auto 16px;border-radius:10px;overflow:hidden;
+    box-shadow:0 6px 18px rgba(43,45,107,.18);border:2px solid rgba(43,45,107,.12);}
+  .flag svg{display:block;}
+  .q{font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.2rem;color:var(--ink);margin-bottom:14px;}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .opt{font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.15rem;color:var(--ink);background:var(--surface);
+    border:none;border-radius:16px;padding:15px 12px;cursor:pointer;box-shadow:0 5px 0 var(--surface2);}
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .feedback{min-height:30px;font-family:'Fredoka',sans-serif;font-size:1.2rem;font-weight:600;margin-top:14px;}
+  .feedback.good{color:var(--good);} .feedback.bad{color:var(--bad);}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Op rij</span><span class="val" id="streak">0</span></div>
+  </div>
+  <div class="card">
+    <h1>🌍 Vlaggenquiz</h1>
+    <p class="sub">Van welk land is deze vlag?</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <div id="startScreen">
+      <p class="q">Raad bij elke vlag het juiste land. 10 vragen — hoeveel weet jij?</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+
+    <div id="playScreen" class="hidden-el">
+      <div class="flag" id="flag"></div>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.2rem" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+  // landen met natekenbare vlaggen (geen vlag-emoji: werkt overal)
+  const LANDEN=[
+    {n:"Nederland", t:"h3", c:["#AE1C28","#ffffff","#21468B"]},
+    {n:"Duitsland", t:"h3", c:["#000000","#DD0000","#FFCE00"]},
+    {n:"Hongarije", t:"h3", c:["#CD2A3E","#ffffff","#436F4D"]},
+    {n:"Bulgarije", t:"h3", c:["#ffffff","#00966E","#D62612"]},
+    {n:"Litouwen", t:"h3", c:["#FDB913","#006A44","#C1272D"]},
+    {n:"Rusland", t:"h3", c:["#ffffff","#0039A6","#D52B1E"]},
+    {n:"Oostenrijk", t:"h3", c:["#ED2939","#ffffff","#ED2939"]},
+    {n:"Frankrijk", t:"v3", c:["#0055A4","#ffffff","#EF4135"]},
+    {n:"België", t:"v3", c:["#000000","#FAE042","#ED2939"]},
+    {n:"Italië", t:"v3", c:["#009246","#ffffff","#CE2B37"]},
+    {n:"Ierland", t:"v3", c:["#169B62","#ffffff","#FF883E"]},
+    {n:"Roemenië", t:"v3", c:["#002B7F","#FCD116","#CE1126"]},
+    {n:"Polen", t:"h2", c:["#ffffff","#DC143C"]},
+    {n:"Indonesië", t:"h2", c:["#CE1126","#ffffff"]},
+    {n:"Oekraïne", t:"h2", c:["#0057B7","#FFD700"]},
+    {n:"Zweden", t:"cross", c:["#006AA7","#FECC02"]},
+    {n:"Denemarken", t:"cross", c:["#C8102E","#ffffff"]},
+    {n:"Finland", t:"cross", c:["#ffffff","#003580"]},
+    {n:"Noorwegen", t:"cross2", c:["#EF2B2D","#ffffff","#00205B"]},
+    {n:"IJsland", t:"cross2", c:["#02529C","#ffffff","#DC1E35"]},
+    {n:"Zwitserland", t:"plus", c:["#D52B1E","#ffffff"]},
+    {n:"Japan", t:"circle", c:["#ffffff","#BC002D"]},
+    {n:"Bangladesh", t:"circle", c:["#006A4E","#F42A41"], cx:26}
+  ];
+  const TOTAL=10, BEST_KEY="vlaggen_best";
+  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+  let queue=[], idx=0, score=0, streak=0, cur=null, answered=false;
+  const $=id=>document.getElementById(id);
+  function showBest(){ $("best").textContent=best>0?("🏅 Beste: "+best+" / "+TOTAL):""; } showBest();
+  const shuffle=a=>a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]);
+
+  function flagSVG(c){
+    const col=c.c||[], R=(x,y,w,h,f)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+    let g="";
+    if(c.t==="h3") g=R(0,0,60,40/3,col[0])+R(0,40/3,60,40/3,col[1])+R(0,80/3,60,40/3,col[2]);
+    else if(c.t==="v3") g=R(0,0,20,40,col[0])+R(20,0,20,40,col[1])+R(40,0,20,40,col[2]);
+    else if(c.t==="h2") g=R(0,0,60,20,col[0])+R(0,20,60,20,col[1]);
+    else if(c.t==="cross") g=R(0,0,60,40,col[0])+R(16,0,8,40,col[1])+R(0,16,60,8,col[1]);
+    else if(c.t==="cross2") g=R(0,0,60,40,col[0])+R(15,0,10,40,col[1])+R(0,15,60,10,col[1])+R(17.5,0,5,40,col[2])+R(0,17.5,60,5,col[2]);
+    else if(c.t==="plus") g=R(0,0,60,40,col[0])+R(26,10,8,20,col[1])+R(18,16,24,8,col[1]);
+    else if(c.t==="circle") g=R(0,0,60,40,col[0])+`<circle cx="${c.cx||30}" cy="20" r="10" fill="${col[1]}"/>`;
+    return `<svg viewBox="0 0 60 40" preserveAspectRatio="none" width="100%" height="100%">${g}</svg>`;
+  }
+  function buildLevelbar(){ const b=$("levelbar"); b.innerHTML="";
+    for(let i=0;i<TOTAL;i++){ const d=document.createElement("div"); d.className="dot"+(i<idx?" done":"")+(i===idx?" active":""); b.appendChild(d);} }
+
+  function render(){
+    answered=false; cur=queue[idx]; buildLevelbar();
+    $("feedback").textContent=""; $("feedback").className="feedback";
+    $("flag").innerHTML=flagSVG(cur);
+    const wrong=shuffle(LANDEN.filter(l=>l.n!==cur.n)).slice(0,3).map(l=>l.n);
+    const opts=shuffle([cur.n,...wrong]);
+    const o=$("opts"); o.innerHTML="";
+    opts.forEach(name=>{ const b=document.createElement("button"); b.className="opt"; b.textContent=name; b.onclick=()=>answer(b,name); o.appendChild(b); });
+  }
+  function answer(btn,val){
+    if(answered) return; answered=true; const fb=$("feedback");
+    [...$("opts").children].forEach(b=>{ b.disabled=true; if(b.textContent===cur.n)b.classList.add("good"); });
+    if(val===cur.n){ score++; streak++; $("score").textContent=score; $("streak").textContent=streak;
+      fb.className="feedback good"; fb.textContent=(streak>=3?"🔥 ":"✅ ")+["Goed!","Knap!","Top!","Juist!"][Math.floor(Math.random()*4)]; }
+    else { streak=0; $("streak").textContent=0; btn.classList.add("bad"); fb.className="feedback bad"; fb.textContent="❌ Dit is "+cur.n; }
+    idx++; buildLevelbar();
+    setTimeout(()=>{ if(idx>=TOTAL) endGame(); else render(); }, 1150);
+  }
+  function startGame(){ queue=shuffle([...LANDEN]).slice(0,TOTAL); idx=0; score=0; streak=0;
+    $("score").textContent=0; $("streak").textContent=0;
+    $("startScreen").classList.add("hidden-el"); $("endScreen").classList.add("hidden-el"); $("playScreen").classList.remove("hidden-el"); render(); }
+  function endGame(){
+    $("playScreen").classList.add("hidden-el"); $("endScreen").classList.remove("hidden-el");
+    let rec=false; if(score>best){best=score;rec=true;try{localStorage.setItem(BEST_KEY,String(best));}catch(e){}} showBest();
+    $("endEmoji").textContent=score===TOTAL?"🏆":(score>=7?"🎉":"💪");
+    $("endTitle").textContent=score===TOTAL?"Vlaggenexpert!":(score>=7?"Goed gedaan!":"Blijf oefenen!");
+    $("endText").innerHTML="Je had <b>"+score+" van de "+TOTAL+"</b> goed!"+(rec&&score>0?" 🏅 record!":"");
+  }
+  $("startBtn").onclick=startGame; $("againBtn").onclick=startGame;
+</script>
+</body>
+</html>
