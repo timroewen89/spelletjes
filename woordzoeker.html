@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woordzoeker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#0891b2;--violet-dark:#0e7490;}
+  .top{width:100%;max-width:580px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:580px;border-radius:28px;padding:18px 16px 22px;box-shadow:0 18px 40px rgba(43,45,107,.12);}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
+  /* Theme selector */
+  .theme-sel{display:flex;gap:8px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+  .tsel{font-family:'Fredoka',sans-serif;font-size:.95rem;font-weight:700;color:var(--ink);background:var(--surface);border:none;border-radius:12px;padding:8px 14px;cursor:pointer;}
+  .tsel.active{background:var(--violet);color:#fff;}
+  /* Grid */
+  .grid-wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+  .letter-grid{display:grid;gap:4px;flex-shrink:0;}
+  .lc{width:42px;height:42px;border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;
+    font-family:'Fredoka',sans-serif;font-size:1.25rem;font-weight:700;color:var(--ink);
+    cursor:pointer;user-select:none;transition:background .1s,color .1s;border:2px solid transparent;}
+  .lc:hover{background:#e0e7ff;}
+  .lc.selecting{background:#c7d2fe;border-color:var(--violet);}
+  .lc.found{cursor:default;}
+  /* Word list */
+  .word-list{display:flex;flex-direction:column;gap:8px;min-width:110px;}
+  .witem{font-family:'Fredoka',sans-serif;font-size:1.05rem;font-weight:700;color:var(--ink);background:var(--surface);border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:8px;}
+  .witem.found-word{color:var(--good);background:#dcfce7;text-decoration:line-through;}
+  .witem .dot-ind{width:10px;height:10px;border-radius:50%;background:var(--surface2);flex-shrink:0;}
+  .witem.found-word .dot-ind{background:var(--good);}
+  /* Status */
+  .status-bar{text-align:center;font-family:'Fredoka',sans-serif;font-weight:700;font-size:1rem;color:var(--ink-soft);margin-top:10px;min-height:24px;}
+  /* Overlay */
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.96);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:380px;line-height:1.5;}
+  .card{position:relative;}
+  .timer-row{display:flex;justify-content:center;gap:10px;margin-top:8px;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Gevonden</span><span class="val" id="foundPill">0/6</span></div>
+  <div class="pill"><span class="lbl">Tijd</span><span class="val" id="timePill">—</span></div>
+</div>
+<div class="card">
+  <h1>🔍 Woordzoeker</h1>
+  <p class="sub">Klik op de eerste en laatste letter van een woord!</p>
+  <div class="theme-sel" id="themeSel"></div>
+  <div class="grid-wrap">
+    <div class="letter-grid" id="letterGrid"></div>
+    <div class="word-list" id="wordList"></div>
+  </div>
+  <div class="status-bar" id="statusBar">Klik op een letter om te beginnen</div>
+  <div class="overlay" id="startScreen">
+    <h2>🔍 Woordzoeker</h2>
+    <p>Zoek de verborgen woorden in het letterraster.<br>Klik op de <b>eerste</b> letter van een woord, dan op de <b>laatste</b>.<br>Woorden staan horizontaal ↔ of verticaal ↕.</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="winScreen">
+    <h2>🏆 Alle woorden gevonden!</h2>
+    <p id="winMsg"></p>
+    <button class="bigbtn" id="nextBtn">Volgend thema ▶</button>
+    <button class="bigbtn ghostbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+<p style="text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;margin-top:6px;">Woorden staan horizontaal of verticaal — ook achterstevoren!</p>
+
+<script>
+const THEMES=[
+  {label:'🐾 Dieren',  words:['KAT','HOND','VIS','BEER','KIP','EEND']},
+  {label:'🍎 Fruit',   words:['PEER','KERS','KIWI','APPEL','PRUIM','MANGO']},
+  {label:'🎨 Kleuren', words:['ROOD','BLAUW','GROEN','GEEL','ROZE','PAARS']},
+  {label:'🏫 School',  words:['PEN','BOEK','KLAS','LES','TAFEL','KRIJTJE']},
+];
+
+const GRID_SIZE=9;
+const COLORS=['#bbf7d0','#bfdbfe','#fde68a','#fecdd3','#e9d5ff','#fed7aa'];
+const $=id=>document.getElementById(id);
+
+let curTheme=0,grid=[],wordPositions=[],foundWords=new Set(),firstCell=null,startTime=0,timerInterval=null,gameActive=false;
+
+function buildThemeSel(){
+  const s=$('themeSel');s.innerHTML='';
+  THEMES.forEach((t,i)=>{
+    const b=document.createElement('button');b.className='tsel'+(i===curTheme?' active':'');
+    b.textContent=t.label;b.onclick=()=>{curTheme=i;buildGame();};s.appendChild(b);
+  });
+}
+
+function generateGrid(words){
+  const g=Array.from({length:GRID_SIZE},()=>Array(GRID_SIZE).fill(''));
+  const placed=[];
+  // directions: [dr,dc] — horizontal and vertical only, both ways
+  const DIRS=[[0,1],[1,0],[0,-1],[-1,0]];
+
+  for(const word of words){
+    let ok=false;
+    for(let attempt=0;attempt<200&&!ok;attempt++){
+      const dir=DIRS[Math.floor(Math.random()*DIRS.length)];
+      const [dr,dc]=dir;
+      // Calculate valid start range
+      const minR=dr<0?word.length-1:0;
+      const maxR=dr>0?GRID_SIZE-word.length:GRID_SIZE-1;
+      const minC=dc<0?word.length-1:0;
+      const maxC=dc>0?GRID_SIZE-word.length:GRID_SIZE-1;
+      if(minR>maxR||minC>maxC)continue;
+      const r=minR+Math.floor(Math.random()*(maxR-minR+1));
+      const c=minC+Math.floor(Math.random()*(maxC-minC+1));
+      // Check fit
+      let fits=true;
+      for(let i=0;i<word.length&&fits;i++){
+        const nr=r+i*dr,nc=c+i*dc;
+        if(g[nr][nc]!==''&&g[nr][nc]!==word[i])fits=false;
+      }
+      if(fits){
+        const cells=[];
+        for(let i=0;i<word.length;i++){
+          const nr=r+i*dr,nc=c+i*dc;
+          g[nr][nc]=word[i];cells.push([nr,nc]);
+        }
+        placed.push({word,cells});ok=true;
+      }
+    }
+    if(!ok)placed.push({word,cells:[]}); // failed to place, skip
+  }
+  // Fill blanks
+  const ABC='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(let r=0;r<GRID_SIZE;r++)for(let c=0;c<GRID_SIZE;c++)
+    if(g[r][c]==='')g[r][c]=ABC[Math.floor(Math.random()*26)];
+  return {g,placed};
+}
+
+function buildGame(){
+  clearInterval(timerInterval);gameActive=false;foundWords=new Set();firstCell=null;
+  $('foundPill').textContent='0/6';$('timePill').textContent='—';
+  $('winScreen').classList.add('hidden-el');
+  buildThemeSel();
+
+  const theme=THEMES[curTheme];
+  const {g,placed}=generateGrid(theme.words);
+  grid=g;wordPositions=placed;
+
+  renderGrid();renderWordList();
+  $('statusBar').textContent='Zoek de '+theme.words.length+' woorden!';
+}
+
+function startGame(){
+  $('startScreen').classList.add('hidden-el');
+  buildGame();
+  startTime=performance.now();
+  timerInterval=setInterval(()=>{
+    const s=Math.floor((performance.now()-startTime)/1000);
+    $('timePill').textContent=s+'s';
+  },500);
+  gameActive=true;
+}
+
+function renderGrid(){
+  const el=$('letterGrid');el.innerHTML='';
+  el.style.gridTemplateColumns=`repeat(${GRID_SIZE},42px)`;
+  for(let r=0;r<GRID_SIZE;r++){
+    for(let c=0;c<GRID_SIZE;c++){
+      const d=document.createElement('div');d.className='lc';d.textContent=grid[r][c];
+      d.dataset.r=r;d.dataset.c=c;
+      // Check if this cell belongs to a found word and color it
+      wordPositions.forEach((wp,wi)=>{
+        if(foundWords.has(wp.word)&&wp.cells.some(([cr,cc])=>cr===r&&cc===c)){
+          d.style.background=COLORS[wi%COLORS.length];d.classList.add('found');
+        }
+      });
+      if(firstCell&&firstCell[0]===r&&firstCell[1]===c)d.classList.add('selecting');
+      d.onclick=()=>cellClick(r,c);
+      el.appendChild(d);
+    }
+  }
+}
+
+function renderWordList(){
+  const el=$('wordList');el.innerHTML='';
+  THEMES[curTheme].words.forEach((w,i)=>{
+    const d=document.createElement('div');
+    d.className='witem'+(foundWords.has(w)?' found-word':'');
+    d.innerHTML='<span class="dot-ind"></span>'+w;
+    el.appendChild(d);
+  });
+}
+
+function cellClick(r,c){
+  if(!gameActive)return;
+  if(!firstCell){
+    firstCell=[r,c];
+    $('statusBar').textContent='Klik nu op de laatste letter van het woord!';
+    renderGrid();
+  } else {
+    const [r1,c1]=firstCell;
+    firstCell=null;
+    if(r1===r&&c1===c){renderGrid();$('statusBar').textContent='Klik op de eerste letter van een woord!';return;}
+    // Get direction
+    const dr=r-r1,dc=c-c1;
+    // Must be straight line (horizontal or vertical)
+    if(dr!==0&&dc!==0){$('statusBar').textContent='Alleen horizontaal of verticaal — probeer opnieuw!';renderGrid();return;}
+    const len=Math.max(Math.abs(dr),Math.abs(dc));
+    const ndr=dr===0?0:dr/Math.abs(dr);
+    const ndc=dc===0?0:dc/Math.abs(dc);
+    // Extract letters
+    let word='';
+    for(let i=0;i<=len;i++)word+=grid[r1+i*ndr][c1+i*ndc];
+    const rev=word.split('').reverse().join('');
+    // Find match
+    const match=wordPositions.find(wp=>!foundWords.has(wp.word)&&(wp.word===word||wp.word===rev));
+    if(match){
+      foundWords.add(match.word);
+      $('foundPill').textContent=foundWords.size+'/'+THEMES[curTheme].words.length;
+      $('statusBar').textContent='✅ '+match.word+' gevonden!';
+      renderGrid();renderWordList();
+      if(foundWords.size===THEMES[curTheme].words.length)setTimeout(showWin,400);
+    } else {
+      $('statusBar').textContent='Dat woord staat er niet — probeer opnieuw!';
+      renderGrid();
+    }
+  }
+}
+
+function showWin(){
+  clearInterval(timerInterval);gameActive=false;
+  const s=Math.floor((performance.now()-startTime)/1000);
+  $('winMsg').innerHTML='Alle woorden gevonden in <b>'+s+' seconden</b>!';
+  $('winScreen').classList.remove('hidden-el');
+}
+
+$('startBtn').onclick=startGame;
+$('againBtn').onclick=()=>{buildGame();startTime=performance.now();timerInterval=setInterval(()=>{const s=Math.floor((performance.now()-startTime)/1000);$('timePill').textContent=s+'s';},500);gameActive=true;};
+$('nextBtn').onclick=()=>{curTheme=(curTheme+1)%THEMES.length;startGame();};
+
+buildThemeSel();renderGrid();
+</script>
+</body>
+</html>
