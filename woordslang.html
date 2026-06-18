@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woordslang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#d97706;--violet-dark:#b45309;}
+  .top{width:100%;max-width:540px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:540px;border-radius:30px;padding:26px 24px 28px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .chain-box{background:var(--surface);border-radius:18px;padding:12px 16px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:46px;}
+  .chain-word{font-family:'Fredoka',sans-serif;font-weight:600;font-size:.95rem;background:#fff;border-radius:10px;padding:5px 10px;box-shadow:0 3px 0 var(--surface2);}
+  .chain-arrow{font-size:1rem;color:var(--ink-soft);align-self:center;}
+  .current-word{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2.2rem;color:var(--violet-dark);margin-bottom:4px;}
+  .need-letter{font-size:1rem;font-weight:800;color:var(--ink-soft);margin-bottom:12px;}
+  .need-letter span{color:var(--violet);font-size:1.4rem;text-transform:uppercase;}
+  .timer-bar-wrap{background:var(--surface2);border-radius:8px;height:10px;width:100%;margin-bottom:14px;}
+  .timer-bar{background:var(--violet);border-radius:8px;height:10px;width:100%;transition:width .1s linear;}
+  .input-row{display:flex;gap:10px;align-items:center;}
+  .word-input{font-family:'Fredoka',sans-serif;font-size:1.3rem;font-weight:600;border:3px solid var(--surface2);border-radius:14px;padding:12px 16px;flex:1;outline:none;color:var(--ink);}
+  .word-input:focus{border-color:var(--violet);}
+  .feedback{min-height:28px;font-family:'Fredoka',sans-serif;font-size:1.1rem;font-weight:600;margin-top:10px;}
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Keten</span><span class="val" id="chainLen">0</span></div>
+  <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">0</span></div>
+</div>
+<div class="card">
+  <h1>🐍 Woordslang</h1>
+  <p class="sub">Typ een woord dat begint met de <b>laatste letter</b> van het vorige woord!</p>
+  <div class="best" id="bestEl"></div>
+
+  <div id="startScreen">
+    <p style="color:var(--ink-soft);font-weight:700;line-height:1.6;">
+      Ik geef een woord. Jij typt een woord dat begint met de <b>laatste letter</b> van dat woord.<br>
+      Zo maak je een zo lang mogelijke <b>woordslang</b>!<br><br>
+      Je hebt <b>10 seconden</b> per woord.
+    </p>
+    <br>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+
+  <div id="playScreen" class="hidden-el">
+    <div class="chain-box" id="chainBox"></div>
+    <div class="current-word" id="curWord"></div>
+    <div class="need-letter">Typ een woord dat begint met: <span id="needLetter">?</span></div>
+    <div class="timer-bar-wrap"><div class="timer-bar" id="timerBar"></div></div>
+    <div class="input-row">
+      <input class="word-input" id="wordInput" type="text" placeholder="Typ hier..." autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="bigbtn" id="submitBtn">OK</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div id="endScreen" class="hidden-el">
+    <div style="font-size:3rem" id="endEmoji">🐍</div>
+    <h1 id="endTitle">Klaar!</h1>
+    <p class="sub" id="endText"></p>
+    <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+  </div>
+</div>
+
+<script>
+const WORDS=new Set([
+  'aap','aardbei','appel','arm','auto','aal','aas','acht','ader','af',
+  'bal','beer','been','bijl','bloem','boom','boot','baan','bar','bak','bel','bes','bot','brug','bus','bij',
+  'dag','dam','das','deur','dier','doos','dorp','dom','dal','dak','das','dun',
+  'egel','ei','emmer','eend','els','eng','eten',
+  'farm','fiets','film','fles','foto','fout','fut',
+  'gans','geit','glas','goud','gang','giraf',
+  'ham','hand','hart','helm','hoed','hond','huis','hek','hol','hoop',
+  'ijs','inkt',
+  'jas','jam','jurk',
+  'kaars','kam','kat','kast','kip','koe','krab','krul','kuil','kaak','kers',
+  'lam','lamp','laars','land','leeuw','lucht','lus','les','lip','los',
+  'maan','mars','mast','melk','mes','mot','muis','map','mat','mep','mil','mol',
+  'nacht','nek','net','neus','noot','nis','nap','nul',
+  'oog','oor','oost',
+  'pad','paard','pan','peer','pil','pop','pot','pier','pen','pit','pol',
+  'rat','regen','rem','rij','roos','rug','ram','rap','rim','rok','rom',
+  'sap','set','slak','slang','steen','tak','tand','tafel','teen','tip',
+  'taart','toren','tuin','tor','tol','ton','top',
+  'ui','uil','uur',
+  'varken','vis','vlag','vlam','vos','vuur',
+  'weg','wiel','wolk','wolf','worm','wortel','wak','wal','was','wet','wij',
+  'zak','zee','zij','zin','zon','zoom','zwaan','zak',
+]);
+
+const STARTERS=['appel','bloem','egel','huis','kaars','leeuw','maan','nacht','paard','roos','slang','tafel','vlam','water','zwaan'];
+const BKEY='woordslang_best';
+const shuffle=a=>[...a].map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(p=>p[1]);
+const $=id=>document.getElementById(id);
+
+let best=0;try{best=parseInt(localStorage.getItem(BKEY)||'0')||0;}catch(e){}
+let chain=[],curWord='',timerInterval=null,timerLeft=10,answered=false;
+
+function showBest(){$('bestEl').textContent=best>0?'🏅 Beste keten: '+best+' woorden':'';}showBest();
+
+function startGame(){
+  chain=[];curWord=shuffle(STARTERS)[0];timerLeft=10;answered=false;
+  $('chainLen').textContent=0;
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');$('playScreen').classList.remove('hidden-el');
+  renderChain();showCurrent();
+  $('wordInput').value='';$('wordInput').focus();
+  startTimer();
+}
+
+function renderChain(){
+  const box=$('chainBox');box.innerHTML='';
+  if(chain.length===0){box.innerHTML='<span style="color:var(--ink-soft);font-size:.9rem">Hier verschijnt jouw keten…</span>';return;}
+  chain.forEach((w,i)=>{
+    if(i>0){const arr=document.createElement('span');arr.className='chain-arrow';arr.textContent='→';box.appendChild(arr);}
+    const sp=document.createElement('span');sp.className='chain-word';sp.textContent=w;box.appendChild(sp);
+  });
+  box.scrollLeft=box.scrollWidth;
+}
+
+function showCurrent(){
+  $('curWord').textContent=curWord;
+  const last=curWord[curWord.length-1].toUpperCase();
+  $('needLetter').textContent=last;
+  $('feedback').textContent='';$('feedback').className='feedback';
+}
+
+function startTimer(){
+  clearInterval(timerInterval);timerLeft=10;updateTimerBar();
+  timerInterval=setInterval(()=>{
+    timerLeft-=.1;updateTimerBar();
+    if(timerLeft<=0){clearInterval(timerInterval);timeUp();}
+  },100);
+}
+
+function updateTimerBar(){
+  const pct=Math.max(0,timerLeft/10*100);
+  $('timerBar').style.width=pct+'%';
+  $('timerBar').style.background=pct>50?'var(--violet)':pct>25?'#f59e0b':'#ef4444';
+}
+
+function timeUp(){
+  clearInterval(timerInterval);
+  $('feedback').textContent='⏰ Tijd om!';$('feedback').className='feedback bad';
+  setTimeout(endGame,800);
+}
+
+function tryWord(){
+  if(answered)return;
+  const w=$('wordInput').value.trim().toLowerCase().replace(/[^a-záéíóúàèëïöüij]/g,'');
+  $('wordInput').value='';
+  const fb=$('feedback');
+
+  if(w.length<2){fb.className='feedback bad';fb.textContent='❌ Woord is te kort!';return;}
+  const needed=curWord[curWord.length-1].toLowerCase();
+  if(w[0]!==needed){fb.className='feedback bad';fb.textContent='❌ Moet beginnen met een '+needed.toUpperCase()+'!';return;}
+  if(!WORDS.has(w)){fb.className='feedback bad';fb.textContent='❌ "'+w+'" staat niet in de lijst!';return;}
+  if(chain.includes(w)){fb.className='feedback bad';fb.textContent='❌ "'+w+'" heb je al gebruikt!';return;}
+
+  clearInterval(timerInterval);
+  chain.push(curWord);
+  $('chainLen').textContent=chain.length;
+  fb.className='feedback good';fb.textContent='✅ Goed!';
+  curWord=w;
+  renderChain();
+  setTimeout(()=>{showCurrent();$('wordInput').focus();startTimer();},500);
+}
+
+function endGame(){
+  clearInterval(timerInterval);
+  const len=chain.length;
+  let rec=false;if(len>best){best=len;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}showBest();
+  $('chainLen').textContent=len;
+  $('playScreen').classList.add('hidden-el');$('endScreen').classList.remove('hidden-el');
+  $('endEmoji').textContent=len>=10?'🏆':(len>=5?'🐍':'🌱');
+  $('endTitle').textContent=len>=10?'Woordenbaas!':(len>=5?'Goed gedaan!':'Blijf oefenen!');
+  $('endText').innerHTML='Jouw keten had <b>'+len+' woorden</b>'+(rec?' 🏅 Nieuw record!':'');
+}
+
+$('submitBtn').onclick=tryWord;
+$('wordInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();tryWord();}});
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+</script>
+</body>
+</html>

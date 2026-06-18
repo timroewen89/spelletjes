@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slangen en Ladders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#ea580c;--violet-dark:#c2410c;}
+  .top{width:100%;max-width:520px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:520px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:10px;}
+  canvas{width:100%;height:auto;display:block;border-radius:14px;}
+  .controls{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;}
+  .dice-box{background:var(--surface);border-radius:16px;padding:10px 16px;font-size:2.2rem;min-width:60px;text-align:center;}
+  .msg-box{font-family:'Fredoka',sans-serif;font-size:1rem;font-weight:700;color:var(--ink-soft);text-align:center;min-height:24px;margin-top:6px;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:380px;line-height:1.5;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Jij</span><span class="val" id="pPos">1</span></div>
+  <div class="pill"><span class="lbl">CPU</span><span class="val" id="cPos">1</span></div>
+</div>
+<div class="card">
+  <h1>🐍 Slangen en Ladders</h1>
+  <p class="sub">Gooi de dobbelstteen en klim naar vak 100!</p>
+  <canvas id="cv" width="500" height="500"></canvas>
+  <div class="controls">
+    <div class="dice-box" id="diceBox">🎲</div>
+    <button class="bigbtn" id="rollBtn">Gooi dobbelstteen!</button>
+  </div>
+  <div class="msg-box" id="msgBox">Klik om te beginnen!</div>
+  <div class="overlay" id="startScreen">
+    <h2>🐍 Slangen en Ladders</h2>
+    <p>Gooi de dobbelstteen en beweeg je pionnetje. 🪜 Ladders brengen je omhoog. 🐍 Slangen brengen je omlaag. Wie bereikt als eerste vak 100?</p>
+    <button class="bigbtn" id="startBtn">Start spel 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="endScreen">
+    <h2 id="endTitle">🏆 Klaar!</h2>
+    <p id="endMsg"></p>
+    <button class="bigbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const N=10,W=cv.width,H=cv.height,CELL=W/N;
+const $=id=>document.getElementById(id);
+
+// Snakes: head → tail (head is higher number)
+const SNAKES={97:78, 95:56, 88:24, 64:60, 54:34, 17:7};
+// Ladders: bottom → top
+const LADDERS={4:14, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91};
+
+const DICE_FACES=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+
+let pPos=1,cPos=1,turn='player',phase='idle',rolling=false;
+let pAnim=null,cAnim=null; // animation position for smooth movement
+
+function sqToXY(n){
+  if(n<1)n=1;if(n>100)n=100;
+  const idx=n-1;
+  const row=Math.floor(idx/N);
+  const col=idx%N;
+  const x=(row%2===0?col:(N-1-col))*CELL+CELL/2;
+  const y=(N-1-row)*CELL+CELL/2;
+  return {x,y};
+}
+
+function startGame(){
+  pPos=1;cPos=1;turn='player';phase='play';rolling=false;
+  pAnim=sqToXY(1);cAnim=sqToXY(1);
+  $('pPos').textContent=1;$('cPos').textContent=1;
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');
+  $('msgBox').textContent='Jouw beurt — gooi de dobbelstteen!';
+  $('rollBtn').textContent='Gooi dobbelstteen!';$('rollBtn').disabled=false;
+  drawBoard();
+}
+
+function rollDice(){
+  if(rolling||phase!=='play')return;
+  rolling=true;$('rollBtn').disabled=true;
+  // Animate dice roll
+  let rollanim=0;
+  const rollInt=setInterval(()=>{
+    $('diceBox').textContent=DICE_FACES[Math.floor(Math.random()*6)+1];
+    rollanim++;
+    if(rollanim>10){clearInterval(rollInt);const d=Math.floor(Math.random()*6)+1;doMove(d);}
+  },80);
+}
+
+function doMove(d){
+  $('diceBox').textContent=DICE_FACES[d];
+  if(turn==='player'){
+    const newPos=Math.min(pPos+d,100);
+    $('msgBox').textContent='Jij gooit een '+d+'! ('+pPos+' → '+newPos+')';
+    animateMove('player',pPos,newPos,()=>{
+      pPos=newPos;$('pPos').textContent=pPos;
+      if(SNAKES[pPos]){
+        const dest=SNAKES[pPos];
+        $('msgBox').textContent='🐍 Oeps! Slang van '+pPos+' naar '+dest+'!';
+        setTimeout(()=>animateMove('player',pPos,dest,()=>{pPos=dest;$('pPos').textContent=pPos;afterMove();}),600);
+      } else if(LADDERS[pPos]){
+        const dest=LADDERS[pPos];
+        $('msgBox').textContent='🪜 Ladder omhoog! Van '+pPos+' naar '+dest+'!';
+        setTimeout(()=>animateMove('player',pPos,dest,()=>{pPos=dest;$('pPos').textContent=pPos;afterMove();}),600);
+      } else afterMove();
+    });
+  } else {
+    const newPos=Math.min(cPos+d,100);
+    $('msgBox').textContent='CPU gooit een '+d+'! ('+cPos+' → '+newPos+')';
+    animateMove('cpu',cPos,newPos,()=>{
+      cPos=newPos;$('cPos').textContent=cPos;
+      if(SNAKES[cPos]){
+        const dest=SNAKES[cPos];
+        $('msgBox').textContent='CPU: 🐍 Slang van '+cPos+' naar '+dest+'!';
+        setTimeout(()=>animateMove('cpu',cPos,dest,()=>{cPos=dest;$('cPos').textContent=cPos;afterCpuMove();}),600);
+      } else if(LADDERS[cPos]){
+        const dest=LADDERS[cPos];
+        $('msgBox').textContent='CPU: 🪜 Ladder van '+cPos+' naar '+dest+'!';
+        setTimeout(()=>animateMove('cpu',cPos,dest,()=>{cPos=dest;$('cPos').textContent=cPos;afterCpuMove();}),600);
+      } else afterCpuMove();
+    });
+  }
+}
+
+function animateMove(who,from,to,cb){
+  // Step by step animation
+  let cur=from;
+  const dir=to>from?1:-1;
+  const step=()=>{
+    cur+=dir;
+    if(who==='player')pAnim=sqToXY(cur);
+    else cAnim=sqToXY(cur);
+    drawBoard();
+    if(cur!==to)setTimeout(step,120);
+    else cb();
+  };
+  step();
+}
+
+function afterMove(){
+  if(pPos>=100){endGame('player');return;}
+  turn='cpu';
+  $('msgBox').textContent='CPU is aan de beurt...';
+  $('rollBtn').disabled=true;
+  setTimeout(()=>{
+    const d=Math.floor(Math.random()*6)+1;
+    doMove(d);
+  },900);
+}
+
+function afterCpuMove(){
+  if(cPos>=100){endGame('cpu');return;}
+  turn='player';rolling=false;
+  $('rollBtn').disabled=false;$('rollBtn').textContent='Jouw beurt — gooi!';
+  $('msgBox').textContent='Jouw beurt — gooi de dobbelstteen!';
+}
+
+function endGame(winner){
+  phase='over';rolling=false;
+  $('endTitle').textContent=winner==='player'?'🏆 Jij wint!':'😢 CPU wint!';
+  $('endMsg').textContent=winner==='player'?'Gefeliciteerd, je bereikte als eerste vak 100!':'De CPU was je net voor. Probeer het opnieuw!';
+  setTimeout(()=>$('endScreen').classList.remove('hidden-el'),600);
+}
+
+function drawBoard(){
+  ctx.clearRect(0,0,W,H);
+  // Draw cells
+  for(let n=1;n<=100;n++){
+    const {x,y}=sqToXY(n);
+    const row=Math.floor((n-1)/N);
+    const col=(n-1)%N;
+    const even=(row+col)%2===0;
+    ctx.fillStyle=SNAKES[n]?'#fecaca':LADDERS[n]?'#bbf7d0':even?'#f8fafc':'#e2e8f0';
+    ctx.fillRect(x-CELL/2,y-CELL/2,CELL,CELL);
+    ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=1;
+    ctx.strokeRect(x-CELL/2,y-CELL/2,CELL,CELL);
+    // Number
+    ctx.fillStyle='#475569';ctx.font='bold 11px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n,x,y);
+  }
+
+  // Draw snakes
+  Object.entries(SNAKES).forEach(([h,t])=>{
+    const hp=sqToXY(+h),tp=sqToXY(+t);
+    ctx.strokeStyle='rgba(220,38,38,.6)';ctx.lineWidth=5;ctx.lineCap='round';
+    ctx.beginPath();
+    // Wavy line
+    const steps=20;
+    for(let i=0;i<=steps;i++){
+      const tt=i/steps;
+      const mx=hp.x+(tp.x-hp.x)*tt;
+      const my=hp.y+(tp.y-hp.y)*tt;
+      const wave=Math.sin(tt*Math.PI*4)*8;
+      const nx=-Math.sin(Math.atan2(tp.y-hp.y,tp.x-hp.x))*wave;
+      const ny=Math.cos(Math.atan2(tp.y-hp.y,tp.x-hp.x))*wave;
+      if(i===0)ctx.moveTo(mx+nx,my+ny);else ctx.lineTo(mx+nx,my+ny);
+    }
+    ctx.stroke();
+    // Snake head emoji
+    ctx.font='16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🐍',hp.x,hp.y-10);
+  });
+
+  // Draw ladders
+  Object.entries(LADDERS).forEach(([b,t])=>{
+    const bp=sqToXY(+b),tp=sqToXY(+t);
+    ctx.strokeStyle='rgba(22,163,74,.7)';ctx.lineWidth=4;ctx.lineCap='round';
+    const dx=-(tp.y-bp.y)/Math.hypot(tp.x-bp.x,tp.y-bp.y)*6;
+    const dy=(tp.x-bp.x)/Math.hypot(tp.x-bp.x,tp.y-bp.y)*6;
+    // Two rails
+    [[dx,dy],[-dx,-dy]].forEach(([ox,oy])=>{
+      ctx.beginPath();ctx.moveTo(bp.x+ox,bp.y+oy);ctx.lineTo(tp.x+ox,tp.y+oy);ctx.stroke();
+    });
+    // Rungs
+    const steps=4;
+    for(let i=1;i<=steps;i++){
+      const tt=i/(steps+1);
+      const mx=bp.x+(tp.x-bp.x)*tt,my=bp.y+(tp.y-bp.y)*tt;
+      ctx.beginPath();ctx.moveTo(mx+dx,my+dy);ctx.lineTo(mx-dx,my-dy);ctx.stroke();
+    }
+    ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🪜',bp.x,bp.y+10);
+  });
+
+  // Player tokens
+  // CPU (red)
+  const cp=cAnim||sqToXY(cPos);
+  ctx.fillStyle='#dc2626';ctx.beginPath();ctx.arc(cp.x+7,cp.y-4,11,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 10px Nunito';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('CPU',cp.x+7,cp.y-4);
+
+  // Player (blue)
+  const pp=pAnim||sqToXY(pPos);
+  ctx.fillStyle='#2563eb';ctx.beginPath();ctx.arc(pp.x-7,pp.y-4,11,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 10px Nunito';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('Jij',pp.x-7,pp.y-4);
+}
+
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+$('rollBtn').onclick=rollDice;
+drawBoard();
+</script>
+</body>
+</html>

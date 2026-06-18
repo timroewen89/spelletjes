@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fietsen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#16a34a;--violet-dark:#15803d;}
+  .top{width:100%;max-width:540px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:540px;border-radius:28px;padding:18px;box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
+  .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:10px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;touch-action:none;}
+  .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.95);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px;}
+  .overlay.hidden-el{display:none;}
+  .overlay h2{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.8rem;color:var(--violet-dark);}
+  .overlay p{color:var(--ink-soft);font-weight:700;max-width:400px;line-height:1.5;}
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Ronde</span><span class="val" id="lapPill">0/3</span></div>
+  <div class="pill"><span class="lbl">Snelheid</span><span class="val" id="speedPill">0</span></div>
+  <div class="pill"><span class="lbl">Beste</span><span class="val" id="best">—</span></div>
+</div>
+<div class="card">
+  <h1>🚴 Fietsen</h1>
+  <p class="sub">Trap zo snel mogelijk: wissel ← → af om te versnellen!</p>
+  <canvas id="cv" width="520" height="320"></canvas>
+  <div class="overlay" id="startScreen">
+    <h2>🚴 Fietsen</h2>
+    <p>Wissel zo snel mogelijk tussen <b>← en →</b> (of A en D) om te trappen.<br>Op mobiel: tik afwisselend links en rechts.<br>Rij <b>3 rondjes</b> voor de tegenstander!</p>
+    <button class="bigbtn" id="startBtn">Start race 🚀</button>
+  </div>
+  <div class="overlay hidden-el" id="endScreen">
+    <h2 id="endTitle">Klaar!</h2>
+    <p id="endMsg"></p>
+    <button class="bigbtn" id="againBtn">Opnieuw 🔁</button>
+  </div>
+</div>
+<p class="hint-foot">3 rondjes — wie als eerste klaar is wint!</p>
+
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const W=520,H=320,CX=W/2,CY=H/2;
+const BKEY='fietsen_best';
+const $=id=>document.getElementById(id);
+
+// Oval track
+const RX=190,RY=120,TRACK_W=28;
+
+let best=null;try{const v=parseFloat(localStorage.getItem(BKEY));if(!isNaN(v))best=v;}catch(e){}
+if(best!==null)$('best').textContent=best.toFixed(2)+'s';
+
+let phase='idle',startTime=0,lastKey=null;
+let pAngle=Math.PI*.5,pSpd=0,pLaps=0;
+let cAngle=Math.PI*.5+.15,cSpd=0.022,cLaps=0;
+let wheelRot=0,finished=false,animId=null;
+let confetti=[];
+
+function ovalPoint(a){
+  return {x:CX+Math.cos(a)*RX, y:CY+Math.sin(a)*RY};
+}
+function ovalCircumference(){
+  // Approximation: Ramanujan
+  const h=((RX-RY)/(RX+RY))**2;
+  return Math.PI*(RX+RY)*(1+3*h/(10+Math.sqrt(4-3*h)));
+}
+const CIRC=ovalCircumference();
+function ovalSpeed(a,linearSpd){
+  // angular speed from linear
+  const dx=-Math.sin(a)*RX,dy=Math.cos(a)*RY;
+  const r=Math.hypot(dx,dy);
+  return linearSpd/r;
+}
+
+function startGame(){
+  pAngle=Math.PI*.5;pSpd=0;pLaps=0;
+  cAngle=Math.PI*.5+.2;cSpd=0;cLaps=0;
+  lastKey=null;wheelRot=0;finished=false;confetti=[];
+  $('lapPill').textContent='0/3';$('speedPill').textContent='0';
+  $('startScreen').classList.add('hidden-el');$('endScreen').classList.add('hidden-el');
+  phase='play';startTime=performance.now();
+  if(animId)cancelAnimationFrame(animId);
+  loop();
+}
+
+function pedal(side){
+  if(phase!=='play'||finished)return;
+  if(side===lastKey)return;
+  lastKey=side;
+  pSpd=Math.min(pSpd+.5,8.5);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){e.preventDefault();pedal('L');}
+  else if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){e.preventDefault();pedal('R');}
+});
+cv.addEventListener('pointerdown',e=>{
+  const r=cv.getBoundingClientRect();
+  pedal((e.clientX-r.left)/(r.width/W)<W/2?'L':'R');
+});
+
+function spawnConfetti(x,y){
+  for(let i=0;i<12;i++)confetti.push({x,y,vx:(Math.random()-0.5)*5,vy:Math.random()*-5-2,r:4+Math.random()*4,c:['#22c55e','#3b82f6','#f59e0b','#ec4899'][i%4],life:60});
+}
+
+function step(now){
+  if(phase!=='play')return;
+  pSpd=Math.max(0,pSpd-.045);
+  const cpuAccel=0.008;
+  cSpd=Math.min(cSpd+cpuAccel,.028);
+
+  const prevPA=pAngle,prevCA=cAngle;
+  pAngle+=ovalSpeed(pAngle,pSpd*.012);
+  cAngle+=cSpd;
+  wheelRot+=pSpd*.15;
+
+  $('speedPill').textContent=Math.round(pSpd*15);
+
+  // Count laps (crossing angle = π/2 going counterclockwise... actually clockwise)
+  // Lap when crossing the start angle (π/2) from below to above
+  function crossed(prev,cur){
+    const s=Math.PI*.5;
+    const prevN=(prev%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+    const curN=(cur%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+    if(prevN<s+.5&&curN>=s+.5&&curN<s+2)return false;
+    if(prevN>s&&prevN<s+1.5&&curN>s+1.5)return true;
+    return false;
+  }
+  // simpler: count full circles
+  function lapCheck(prev,cur,laps){
+    const prevMod=(prev%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+    const curMod=(cur%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+    // going up in angle: clockwise on canvas
+    if(prevMod>curMod&&curMod<0.5)return laps+1;
+    return laps;
+  }
+  const newPLaps=lapCheck(prevPA,pAngle,pLaps);
+  const newCLaps=lapCheck(prevCA,cAngle,cLaps);
+  if(newPLaps>pLaps){pLaps=newPLaps;$('lapPill').textContent=Math.min(pLaps,3)+'/3';const p=ovalPoint(pAngle);spawnConfetti(p.x,p.y);}
+  if(newCLaps>cLaps)cLaps=newCLaps;
+
+  for(let i=confetti.length-1;i>=0;i--){const c=confetti[i];c.x+=c.vx;c.y+=c.vy;c.vy+=.2;c.life--;if(c.life<=0)confetti.splice(i,1);}
+
+  if((pLaps>=3||cLaps>=3)&&!finished){
+    finished=true;
+    const elapsed=(now-startTime)/1000;
+    if(pLaps>=3){
+      let rec=false;if(best===null||elapsed<best){best=elapsed;rec=true;try{localStorage.setItem(BKEY,String(best));}catch(e){}}
+      if(best!==null)$('best').textContent=best.toFixed(2)+'s';
+      $('endTitle').textContent='🏆 Je hebt gewonnen!';
+      $('endMsg').innerHTML='Tijd: <b>'+elapsed.toFixed(2)+' seconden</b>'+(rec?' 🏅 Nieuw record!':'');
+    } else {
+      $('endTitle').textContent='😅 Tegenstander wint!';
+      $('endMsg').innerHTML='Wissel sneller af om de volgende keer te winnen!';
+    }
+    phase='done';setTimeout(()=>$('endScreen').classList.remove('hidden-el'),900);
+  }
+}
+
+function drawTrack(){
+  // Outer oval
+  ctx.strokeStyle='#15803d';ctx.lineWidth=TRACK_W+6;
+  ctx.beginPath();ctx.ellipse(CX,CY,RX,RY,0,0,Math.PI*2);ctx.stroke();
+  // Track surface
+  ctx.strokeStyle='#4a4a4a';ctx.lineWidth=TRACK_W;
+  ctx.beginPath();ctx.ellipse(CX,CY,RX,RY,0,0,Math.PI*2);ctx.stroke();
+  // Lane line
+  ctx.strokeStyle='rgba(255,255,255,.4)';ctx.lineWidth=2;ctx.setLineDash([12,10]);
+  ctx.beginPath();ctx.ellipse(CX,CY,RX,RY,0,0,Math.PI*2);ctx.stroke();
+  ctx.setLineDash([]);
+  // Infield grass
+  ctx.fillStyle='#22c55e';ctx.beginPath();ctx.ellipse(CX,CY,RX-TRACK_W/2,RY-TRACK_W/2,0,0,Math.PI*2);ctx.fill();
+  // Start/finish line
+  const sp=ovalPoint(Math.PI*.5);
+  ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.setLineDash([]);
+  ctx.beginPath();
+  const nx=-Math.sin(Math.PI*.5)*RX,ny=Math.cos(Math.PI*.5)*RY;
+  const len=Math.hypot(nx,ny);
+  ctx.moveTo(sp.x-(nx/len)*(TRACK_W*.7),sp.y-(ny/len)*(TRACK_W*.7));
+  ctx.lineTo(sp.x+(nx/len)*(TRACK_W*.7),sp.y+(ny/len)*(TRACK_W*.7));
+  ctx.stroke();
+}
+
+function drawBike(x,y,color,rot){
+  ctx.save();ctx.translate(x,y);
+  // Wheels
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;
+  [-10,10].forEach(ox=>{
+    ctx.beginPath();ctx.arc(ox,4,7,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(ox+Math.cos(rot)*7,4+Math.sin(rot)*7);
+    ctx.lineTo(ox-Math.cos(rot)*7,4-Math.sin(rot)*7);ctx.stroke();
+  });
+  // Frame
+  ctx.strokeStyle=color;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(-10,4);ctx.lineTo(0,-4);ctx.lineTo(10,4);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,-4);ctx.lineTo(0,-10);ctx.stroke();
+  ctx.restore();
+}
+
+function loop(now=0){
+  if(phase==='play')step(now);
+  ctx.fillStyle='#86efac';ctx.fillRect(0,0,W,H);
+  drawTrack();
+  // Confetti
+  for(const c of confetti){ctx.fillStyle=c.c;ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();}
+  const pp=ovalPoint(pAngle),cp=ovalPoint(cAngle);
+  drawBike(cp.x,cp.y,'#dc2626',wheelRot*.8);
+  drawBike(pp.x,pp.y,'#2563eb',wheelRot);
+  // Labels
+  ctx.font='bold 11px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';
+  ctx.fillStyle='#1e3a8a';ctx.fillText('Jij',pp.x,pp.y-14);
+  ctx.fillStyle='#7f1d1d';ctx.fillText('CPU',cp.x,cp.y-14);
+  // Lap progress arcs
+  if(pLaps<3){
+    const lapFrac=(pAngle%(Math.PI*2))/(Math.PI*2);
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=4;
+    ctx.beginPath();ctx.arc(W-36,20,14,-Math.PI/2,-Math.PI/2+lapFrac*Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=4;
+    ctx.beginPath();ctx.arc(W-36,20,14,-Math.PI/2,-Math.PI/2+lapFrac*Math.PI*2,true);ctx.stroke();
+  }
+  if(phase==='play')animId=requestAnimationFrame(loop);
+  else requestAnimationFrame(loop);
+}
+
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+loop();
+</script>
+</body>
+</html>
