@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Homerun</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
@@ -15,7 +14,7 @@
     box-shadow:0 18px 40px rgba(43,45,107,.12);position:relative;}
   h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.7rem;color:var(--violet-dark);text-align:center;margin-bottom:4px;}
   .sub{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.9rem;margin-bottom:12px;}
-  canvas{width:100%;height:auto;display:block;border-radius:18px;}
+  canvas{width:100%;height:auto;display:block;border-radius:18px;cursor:pointer;}
   .overlay{position:absolute;inset:18px;background:rgba(255,248,238,.94);border-radius:18px;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;}
   .overlay.hidden-el{display:none;}
@@ -27,16 +26,16 @@
 <body>
   <a class="back" href="index.html">← Menu</a>
   <div class="top">
-    <div class="pill"><span class="lbl">Slag</span><span class="val" id="swing">1/5</span></div>
+    <div class="pill"><span class="lbl">Worp</span><span class="val" id="swing">1/5</span></div>
     <div class="pill"><span class="lbl">Verste</span><span class="val" id="best">0 m</span></div>
   </div>
   <div class="card">
     <h1>⚾ Homerun</h1>
-    <p class="sub">Sla de bal zo ver mogelijk! Eerst kracht, dan timing.</p>
+    <p class="sub">De bal komt op je af — sla op het juiste moment zo ver mogelijk!</p>
     <canvas id="cv" width="700" height="420"></canvas>
     <div class="overlay" id="startScreen">
       <h2>⚾ Homerun</h2>
-      <p>Klik 1× voor je <b>kracht</b>, klik nog eens voor de <b>timing</b>. Hoe dichter bij het groene vlak, hoe verder je slaat. Je hebt 5 slagen!</p>
+      <p>De pitcher gooit de bal naar je toe. Sla zodra de bal in de <b>groene zone</b> is. Perfect in het midden = maximale afstand! Je hebt 5 ballen.</p>
       <button class="bigbtn" id="startBtn">Start 🚀</button>
     </div>
     <div class="overlay hidden-el" id="endScreen">
@@ -48,142 +47,485 @@
   <div class="hint-foot">Klik of druk op spatie om te slaan.</div>
 
 <script>
-  const cv=document.getElementById("cv"), ctx=cv.getContext("2d");
-  const W=cv.width, H=cv.height;
-  const GROUND=H-70, BX=70, BY=GROUND;        // batter positie
-  const MAXM=160;                              // veld toont tot 160 m
-  const BEST_KEY="homerun_best";
-  let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
-  document.getElementById("best").textContent=best+" m";
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const W = cv.width, H = cv.height;
 
-  let phase="idle";   // idle | power | timing | fly | between
-  let powerV=0, powerDir=1, powerLock=0;
-  let timeV=0, timeDir=1;
-  let swing=1, furthest=0, total=0;
-  let ball={x:BX,y:BY-30,t:0,dist:0,flying:false,landX:0,peak:0};
-  let resultText="";
+const BEST_KEY = "homerun_fp_v2";
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e) {}
 
-  const $=id=>document.getElementById(id);
+const HORIZON  = H * 0.40;
+const PITCH_MS = 2700;
+const HIT_S    = 0.68;
+const HIT_E    = 0.88;
+const SWEET    = 0.78;
+const MAX_DIST = 155;
 
-  function startGame(){
-    swing=1; furthest=0; total=0;
-    $("startScreen").classList.add("hidden-el");
-    $("endScreen").classList.add("hidden-el");
-    $("swing").textContent="1/5";
-    newSwing();
-  }
-  function newSwing(){
-    phase="ready"; resultText=""; ball.flying=false; ball.x=BX; ball.y=BY-30;
-    $("swing").textContent=swing+"/5";
-  }
-  function act(){
-    if(phase==="ready"){ phase="power"; powerV=0; powerDir=1; }
-    else if(phase==="power"){ powerLock=powerV/100; phase="timing"; timeV=0; timeDir=1; }
-    else if(phase==="timing"){ doHit(); }
-  }
-  function doHit(){
-    // timing: groen vlak rond 0.5; acc 0..1
-    const dev=Math.abs(timeV/100-0.5)/0.5;   // 0 = perfect
-    const acc=Math.max(0,1-dev*1.15);
-    const quality=powerLock*(0.45+0.55*acc);
-    let dist=Math.round(quality*MAXM);
-    if(acc<0.12){ dist=Math.round(dist*0.25); }   // mistimed = zwakke tik
-    ball.dist=dist; ball.landX=BX+(dist/MAXM)*(W-BX-30);
-    ball.peak=Math.min(GROUND-40, 40+dist*1.6);
-    ball.t=0; ball.flying=true; phase="fly";
-    total+=dist; if(dist>furthest)furthest=dist;
-    if(dist>=150) resultText="HOMERUN! 🎉";
-    else if(dist>=110) resultText="Wat een knal! 💥";
-    else if(dist>=60) resultText="Lekkere klap!";
-    else if(acc<0.12) resultText="Net mis getimed…";
-    else resultText="Tikje…";
-  }
-  function afterLand(){
-    if(swing>=5){ endGame(); }
-    else { swing++; phase="between"; setTimeout(newSwing,900); }
-  }
-  function endGame(){
-    if(furthest>best){ best=furthest; try{localStorage.setItem(BEST_KEY,String(best));}catch(e){} }
-    document.getElementById("best").textContent=best+" m";
-    $("endTitle").textContent = furthest>=150?"🏆 Homerunheld!":(furthest>=90?"💪 Sterke slagman!":"Goed geoefend!");
-    $("endText").innerHTML = "Verste klap: <b>"+furthest+" m</b><br>Totaal: "+total+" m" +
-      (furthest>best?"":(furthest>=best?" 🏅 record!":""));
-    $("endScreen").classList.remove("hidden-el");
-    phase="idle";
+let phase = "idle";
+let throwNum = 1, furthest = 0, total = 0;
+let pitchStart = 0;
+let swingAnimT = 0, swingSwinging = false;
+let resultText = "", resultDist = 0;
+let flyDir = 1;
+let fly = { active: false, x: 0, y: 0, t: 0, dist: 0 };
+
+const $ = id => document.getElementById(id);
+
+function updateHUD() {
+  $("swing").textContent = throwNum + "/5";
+  $("best").textContent  = best + " m";
+}
+
+function startGame() {
+  throwNum = 1; furthest = 0; total = 0;
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  updateHUD();
+  newThrow();
+}
+
+function newThrow() {
+  phase        = "ready";
+  resultText   = "";
+  resultDist   = 0;
+  swingAnimT   = 0;
+  swingSwinging = false;
+  fly.active   = false;
+  updateHUD();
+  setTimeout(() => {
+    if (phase === "ready") { phase = "throwing"; pitchStart = performance.now(); }
+  }, 700);
+}
+
+function getT() {
+  return Math.min((performance.now() - pitchStart) / PITCH_MS, 1.05);
+}
+
+// Ball: starts tiny at pitcher, grows as it flies toward the plate
+function ballXY(t) {
+  const clamp = Math.min(t, 1);
+  const y = HORIZON + (H * 0.67 - HORIZON) * Math.pow(clamp, 0.6);
+  const x = W * 0.5 + Math.sin(clamp * Math.PI * 1.1) * 10 * clamp;
+  const r = 1.5 + clamp * clamp * 26;
+  return { x, y, r };
+}
+
+function doSwing() {
+  if (phase !== "throwing") return;
+  swingSwinging = true;
+  swingAnimT = 0;
+
+  const t = getT();
+  let dist = 0, msg = "";
+
+  if (t < HIT_S - 0.09) {
+    dist = 0; msg = "Te vroeg! ❌";
+  } else if (t < HIT_S) {
+    const edge = (t - (HIT_S - 0.09)) / 0.09;
+    dist = Math.round(8 + edge * 28);
+    msg = "Net te vroeg…";
+  } else if (t <= HIT_E) {
+    const dev = Math.abs(t - SWEET) / ((HIT_E - HIT_S) / 2);
+    const q   = Math.max(0, 1 - dev * dev * 0.75);
+    dist = Math.round(35 + q * (MAX_DIST - 35));
+    if (dist >= 145) msg = "HOMERUN! 🎉";
+    else if (dist >= 110) msg = "Wat een knal! 💥";
+    else if (dist >= 70)  msg = "Lekkere klap! 👍";
+    else                  msg = "Tikje…";
+  } else if (t < 1.0) {
+    const edge = (1.0 - t) / (1.0 - HIT_E);
+    dist = Math.round(5 + edge * 28);
+    msg = "Net te laat…";
+  } else {
+    dist = 0; msg = "Te laat! ❌";
   }
 
-  // ---- tekenen ----
-  function draw(){
-    // lucht
-    const sky=ctx.createLinearGradient(0,0,0,GROUND);
-    sky.addColorStop(0,"#bfe8ff"); sky.addColorStop(1,"#e8f7ff");
-    ctx.fillStyle=sky; ctx.fillRect(0,0,W,GROUND);
-    // gras
-    ctx.fillStyle="#3DAA63"; ctx.fillRect(0,GROUND,W,H-GROUND);
-    ctx.fillStyle="#34995a"; for(let i=0;i<W;i+=40) ctx.fillRect(i,GROUND,20,H-GROUND);
-    // afstandspalen
-    ctx.font="600 12px Fredoka, sans-serif"; ctx.textAlign="center";
-    for(let m=25;m<=MAXM;m+=25){
-      const x=BX+(m/MAXM)*(W-BX-30);
-      ctx.strokeStyle="rgba(255,255,255,.6)"; ctx.lineWidth=2;
-      ctx.beginPath(); ctx.moveTo(x,GROUND); ctx.lineTo(x,GROUND-12); ctx.stroke();
-      ctx.fillStyle="rgba(43,45,107,.55)"; ctx.fillText(m+"m",x,GROUND+20);
+  resultDist = dist;
+  resultText = msg;
+  total += dist;
+  if (dist > furthest) furthest = dist;
+
+  if (dist > 0) {
+    const bp = ballXY(t);
+    flyDir = (throwNum % 2 === 0) ? 1 : -1;
+    fly = { active: true, x: bp.x, y: bp.y, t: 0, dist };
+  }
+
+  phase = "hit";
+  setTimeout(afterSwing, 2400);
+}
+
+function afterSwing() {
+  if (throwNum >= 5) endGame();
+  else { throwNum++; phase = "between"; setTimeout(newThrow, 500); }
+}
+
+function endGame() {
+  if (furthest > best) {
+    best = furthest;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+  }
+  updateHUD();
+  $("endTitle").textContent = furthest >= 145 ? "🏆 Homerunheld!" : furthest >= 90 ? "💪 Sterke slagman!" : "Goed geoefend!";
+  $("endText").innerHTML = `Verste klap: <b>${furthest} m</b><br>Totaal geslagen: ${total} m`;
+  $("endScreen").classList.remove("hidden-el");
+  phase = "idle";
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+function rr(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// ── draw helpers ──────────────────────────────────────────────────────────────
+
+function drawSky() {
+  const g = ctx.createLinearGradient(0, 0, 0, HORIZON);
+  g.addColorStop(0, "#1565c0");
+  g.addColorStop(1, "#64b5f6");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, HORIZON + 2);
+
+  // clouds
+  function cloud(cx, cy, s) {
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    [[0,0,1],[s*0.85,s*0.2,.72],[-s*0.7,s*0.25,.58]].forEach(([dx,dy,sc]) => {
+      ctx.beginPath(); ctx.arc(cx+dx, cy+dy, s*sc, 0, Math.PI*2); ctx.fill();
+    });
+  }
+  cloud(110, 44, 22); cloud(500, 30, 19); cloud(310, 60, 14); cloud(620, 55, 11);
+}
+
+function drawStands() {
+  // left
+  ctx.fillStyle = "#6d5a3e";
+  ctx.beginPath();
+  ctx.moveTo(0, HORIZON + 50);
+  ctx.lineTo(W * 0.22, HORIZON - 28);
+  ctx.lineTo(W * 0.22, HORIZON + 50);
+  ctx.closePath(); ctx.fill();
+
+  // right
+  ctx.beginPath();
+  ctx.moveTo(W, HORIZON + 50);
+  ctx.lineTo(W * 0.78, HORIZON - 28);
+  ctx.lineTo(W * 0.78, HORIZON + 50);
+  ctx.closePath(); ctx.fill();
+
+  // seat rows
+  ctx.strokeStyle = "rgba(0,0,0,0.12)"; ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) {
+    const frac = i / 5;
+    const ly = HORIZON + 50 - frac * (50 + 28);
+    ctx.beginPath();
+    ctx.moveTo(0, ly); ctx.lineTo(W * 0.22 * frac * 1.2, ly);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W, ly); ctx.lineTo(W - W * 0.22 * frac * 1.2, ly);
+    ctx.stroke();
+  }
+
+  // crowd dots
+  const colours = ["#ef5350","#fdd835","#43a047","#1e88e5","#ab47bc","#fb8c00","#ffffff"];
+  for (let i = 0; i < 110; i++) {
+    const side = i < 55;
+    const row  = Math.floor(i / 14);
+    const pos  = (i % 14) / 14;
+    const cx   = side ? pos * W * 0.2 : W * 0.8 + pos * W * 0.2;
+    const cy   = HORIZON - 10 + row * 7 + (side ? 0 : (i % 3) * 3);
+    ctx.fillStyle = colours[i % 7];
+    ctx.beginPath(); ctx.arc(cx, cy, 2.8, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+function drawField() {
+  // grass
+  const g = ctx.createLinearGradient(0, HORIZON, 0, H);
+  g.addColorStop(0,   "#43a047");
+  g.addColorStop(0.4, "#388e3c");
+  g.addColorStop(1,   "#2e7d32");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(0, HORIZON); ctx.lineTo(W, HORIZON); ctx.lineTo(W, H); ctx.lineTo(0, H);
+  ctx.closePath(); ctx.fill();
+
+  // mow stripes
+  for (let i = 0; i < 6; i++) {
+    const t1 = i / 6, t2 = (i + 1) / 6;
+    const y1 = HORIZON + (H - HORIZON) * t1;
+    const y2 = HORIZON + (H - HORIZON) * t2;
+    if (i % 2 === 0) { ctx.fillStyle = "rgba(0,0,0,0.06)"; ctx.fillRect(0, y1, W, y2 - y1); }
+  }
+
+  // infield dirt diamond
+  ctx.fillStyle = "rgba(188,148,95,0.55)";
+  ctx.beginPath();
+  ctx.moveTo(W * 0.5,  HORIZON + 8);
+  ctx.lineTo(W * 0.68, H * 0.64);
+  ctx.lineTo(W * 0.5,  H * 0.74);
+  ctx.lineTo(W * 0.32, H * 0.64);
+  ctx.closePath(); ctx.fill();
+
+  // foul lines
+  ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 2;
+  ctx.setLineDash([7,5]);
+  ctx.beginPath(); ctx.moveTo(W*0.43, H*0.70); ctx.lineTo(W*0.08, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(W*0.57, H*0.70); ctx.lineTo(W*0.92, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // pitcher's mound
+  ctx.fillStyle = "rgba(188,148,95,0.75)";
+  ctx.beginPath(); ctx.ellipse(W*0.5, H*0.555, 22, 7, 0, 0, Math.PI*2); ctx.fill();
+
+  // home plate (implied at viewer position)
+  ctx.fillStyle = "rgba(255,255,255,0.65)";
+  ctx.beginPath();
+  ctx.moveTo(W*0.5,   H*0.735);
+  ctx.lineTo(W*0.515, H*0.750);
+  ctx.lineTo(W*0.510, H*0.760);
+  ctx.lineTo(W*0.490, H*0.760);
+  ctx.lineTo(W*0.485, H*0.750);
+  ctx.closePath(); ctx.fill();
+}
+
+function drawPitcher(ballT) {
+  const px = W * 0.5, py = H * 0.53, s = 0.55;
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.13)";
+  ctx.beginPath(); ctx.ellipse(px, py+15*s, 9*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
+
+  // legs
+  ctx.strokeStyle = "#1a237e"; ctx.lineWidth = 4*s; ctx.lineCap = "round";
+  [[px,py+2*s,px-6*s,py+16*s],[px,py+2*s,px+6*s,py+16*s]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+  // body
+  ctx.fillStyle = "#283593";
+  ctx.fillRect(px-5.5*s, py-14*s, 11*s, 17*s);
+  // throwing arm: just threw, so extended
+  const armA = ballT < 0.15 ? -0.7 : -0.15;
+  ctx.strokeStyle = "#e8c99a"; ctx.lineWidth = 3.5*s;
+  ctx.beginPath(); ctx.moveTo(px+5*s, py-10*s);
+  ctx.lineTo(px+13*s*Math.cos(armA), py-10*s+13*s*Math.sin(armA)); ctx.stroke();
+  // glove arm
+  ctx.beginPath(); ctx.moveTo(px-5*s, py-10*s); ctx.lineTo(px-13*s, py-3*s); ctx.stroke();
+  // head
+  ctx.fillStyle = "#e8c99a";
+  ctx.beginPath(); ctx.arc(px, py-20*s, 7*s, 0, Math.PI*2); ctx.fill();
+  // cap
+  ctx.fillStyle = "#1a237e";
+  ctx.beginPath(); ctx.arc(px, py-22*s, 7*s, Math.PI, Math.PI*2); ctx.fill();
+  ctx.fillRect(px-9*s, py-22*s, 18*s, 3*s);
+}
+
+function drawBallInFlight(t) {
+  const {x, y, r} = ballXY(t);
+  // motion blur trail
+  if (t > 0.45) {
+    const prev = ballXY(Math.max(0, t - 0.06));
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = r * 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(x, y); ctx.stroke();
+  }
+  // ball body
+  const bg = ctx.createRadialGradient(x-r*.3, y-r*.3, 0, x, y, r);
+  bg.addColorStop(0, "#ffffff"); bg.addColorStop(.7, "#f0e8df"); bg.addColorStop(1, "#d9cfc5");
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  // seams
+  if (r > 6) {
+    ctx.strokeStyle = "rgba(190,45,45,0.65)";
+    ctx.lineWidth = Math.max(.7, r * .07);
+    ctx.beginPath(); ctx.arc(x+r*.15, y, r*.58, -0.5, 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x-r*.15, y, r*.58, Math.PI-.5, Math.PI+.5); ctx.stroke();
+  }
+}
+
+function drawFlyBall() {
+  if (!fly.active) return;
+  fly.t += 0.024;
+  const t = fly.t;
+  const peak = 50 + fly.dist * 0.85;
+  const fx = fly.x + flyDir * t * 65;
+  const fy = fly.y - Math.sin(t * Math.PI * 0.55) * peak + t * 15;
+  const fr = Math.max(1, 12 - t * 7);
+  if (t > 1.7 || fy < 8) { fly.active = false; return; }
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#c33"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+}
+
+function drawBat() {
+  // First-person bat at lower-right, partially in frame
+  const bx = W * 0.80, by = H * 0.92;
+
+  if (swingSwinging && swingAnimT < 1.3) swingAnimT += 0.048;
+  const angle = swingSwinging
+    ? -Math.PI * 0.78 * Math.sin(swingAnimT * Math.PI * 0.72)
+    : 0;
+
+  ctx.save();
+  ctx.translate(bx, by);
+  ctx.rotate(-0.28 + angle);
+
+  // knob
+  ctx.fillStyle = "#4e2a10";
+  ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI*2); ctx.fill();
+
+  // handle
+  const hg = ctx.createLinearGradient(-6, -95, 6, 0);
+  hg.addColorStop(0, "#6b3e1e"); hg.addColorStop(.5, "#a05228"); hg.addColorStop(1, "#7b4a25");
+  ctx.fillStyle = hg;
+  ctx.fillRect(-5, -90, 10, 90);
+
+  // barrel
+  const bg2 = ctx.createLinearGradient(-20, -150, 20, -88);
+  bg2.addColorStop(0, "#8b5e2a"); bg2.addColorStop(.4, "#c4843f"); bg2.addColorStop(1, "#7b4a20");
+  ctx.fillStyle = bg2;
+  ctx.beginPath(); ctx.ellipse(0, -118, 20, 42, 0, 0, Math.PI*2); ctx.fill();
+
+  // shine
+  ctx.fillStyle = "rgba(255,255,255,0.22)";
+  ctx.beginPath(); ctx.ellipse(-6, -128, 6, 16, -0.2, 0, Math.PI*2); ctx.fill();
+
+  ctx.restore();
+}
+
+function drawHitZone() {
+  if (phase !== "throwing") return;
+  const t   = getT();
+  const bx  = W/2 - 158, bw = 316, bh = 20, by = H - 44;
+
+  // outer shadow
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  rr(bx-3, by-3, bw+6, bh+6, 12); ctx.fill();
+
+  // track
+  ctx.fillStyle = "rgba(60,60,60,0.55)";
+  rr(bx, by, bw, bh, 10); ctx.fill();
+
+  // green zone
+  ctx.save();
+  rr(bx, by, bw, bh, 10); ctx.clip();
+  const zx1 = bx + bw * HIT_S, zx2 = bx + bw * HIT_E;
+  const inZone = t >= HIT_S && t <= HIT_E;
+  ctx.fillStyle = inZone ? "rgba(56,220,100,0.95)" : "rgba(46,200,90,0.5)";
+  ctx.fillRect(zx1, by, zx2 - zx1, bh);
+  ctx.restore();
+
+  // sweet spot
+  const sx = bx + bw * SWEET;
+  ctx.fillStyle = inZone ? "#ffd700" : "rgba(255,215,0,0.55)";
+  ctx.fillRect(sx-2, by, 4, bh);
+
+  // ball tracker
+  const ballX = bx + bw * Math.min(t, 1);
+  ctx.fillStyle = "#fff"; ctx.strokeStyle = "#c33"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(ballX, by + bh/2, 9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+
+  // label above zone
+  ctx.font = "700 11px Fredoka, sans-serif";
+  ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.textAlign = "center";
+  ctx.fillText("SLAGZONE", bx + bw*(HIT_S+HIT_E)/2, by - 7);
+
+  // SLAAA flash
+  if (inZone) {
+    ctx.font = "700 34px Fredoka, sans-serif";
+    ctx.fillStyle = "#ffd700";
+    ctx.shadowColor = "rgba(0,0,0,0.55)"; ctx.shadowBlur = 10;
+    ctx.fillText("SLAAA! ⚾", W/2, H * 0.71);
+    ctx.shadowBlur = 0;
+  }
+}
+
+function drawUI() {
+  ctx.textAlign = "center";
+
+  if (phase === "ready") {
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "700 18px Fredoka, sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 5;
+    ctx.fillText("Klaar… de pitcher gooit!", W/2, 40);
+    ctx.shadowBlur = 0;
+  }
+
+  if (phase === "throwing") {
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.font = "600 14px Fredoka, sans-serif";
+    ctx.fillText("Klik of SPATIE om te slaan", W/2, H - 70);
+  }
+
+  if (resultText && (phase === "hit" || phase === "miss")) {
+    const isHR = resultText.includes("HOMERUN");
+    ctx.font = "700 36px Fredoka, sans-serif";
+    ctx.fillStyle = isHR ? "#ffd700" : "#fff";
+    ctx.shadowColor = "rgba(0,0,0,0.6)"; ctx.shadowBlur = 8;
+    ctx.fillText(resultText, W/2, 52);
+    if (resultDist > 0) {
+      ctx.font = "700 26px Fredoka, sans-serif";
+      ctx.fillStyle = "#fff";
+      ctx.fillText(resultDist + " meter!", W/2, 86);
     }
-    // batter (simpel poppetje)
-    ctx.fillStyle="#2B2D6B"; ctx.beginPath(); ctx.arc(BX,BY-46,10,0,7); ctx.fill();
-    ctx.fillRect(BX-5,BY-38,10,26);
-    ctx.strokeStyle="#8b5a2b"; ctx.lineWidth=4; ctx.beginPath();
-    ctx.moveTo(BX+4,BY-30); ctx.lineTo(BX+22,BY-48); ctx.stroke();
-    // bal
-    if(phase==="fly"||resultText){
-      ctx.fillStyle="#fff"; ctx.strokeStyle="#d33"; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.arc(ball.x,ball.y,7,0,7); ctx.fill(); ctx.stroke();
-    }
-    // meters / instructie
-    drawUI();
-    if(resultText && phase!=="fly"){
-      ctx.fillStyle="rgba(43,45,107,.92)"; ctx.font="700 26px Fredoka, sans-serif"; ctx.textAlign="center";
-      ctx.fillText(resultText+"  ("+ball.dist+" m)",W/2,60);
-    }
-  }
-  function bar(x,y,w,h,val,col,zone){
-    ctx.fillStyle="rgba(255,255,255,.75)"; roundRect(x,y,w,h,8); ctx.fill();
-    if(zone){ ctx.fillStyle="rgba(46,214,166,.55)"; ctx.fillRect(x+w*0.40,y,w*0.20,h); }
-    ctx.fillStyle=col; ctx.fillRect(x+2,y+2,(w-4)*val,h-4);
-  }
-  function marker(x,y,w,h,pos){ ctx.fillStyle="#2B2D6B"; ctx.fillRect(x+(w*pos)-2,y-3,4,h+6); }
-  function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
-  function drawUI(){
-    const bx=W/2-150, bw=300, h=22;
-    ctx.textAlign="center"; ctx.fillStyle="rgba(43,45,107,.85)"; ctx.font="700 14px Fredoka, sans-serif";
-    if(phase==="ready"){ ctx.fillText("Klik om te beginnen met slaan",W/2,H-22); }
-    else if(phase==="power"){ ctx.fillText("KRACHT — klik om vast te zetten",W/2,H-40);
-      bar(bx,H-32,bw,h,powerV/100,"#FF6B5C",false); }
-    else if(phase==="timing"){ ctx.fillText("TIMING — klik in het groene vlak!",W/2,H-40);
-      bar(bx,H-32,bw,h,1,"rgba(255,255,255,0)",true); marker(bx,H-32,bw,h,timeV/100); }
+    ctx.shadowBlur = 0;
   }
 
-  // ---- loop ----
-  let lastReady=true;
-  function loop(){
-    if(phase==="power"){ powerV+=powerDir*2.6; if(powerV>=100){powerV=100;powerDir=-1;} if(powerV<=0){powerV=0;powerDir=1;} }
-    if(phase==="timing"){ timeV+=timeDir*3.4; if(timeV>=100){timeV=100;timeDir=-1;} if(timeV<=0){timeV=0;timeDir=1;} }
-    if(phase==="fly"){
-      ball.t+=0.022;
-      const t=ball.t;
-      if(t>=1){ ball.x=ball.landX; ball.y=BY-30; phase="land"; afterLand(); }
-      else{ ball.x=BX+(ball.landX-BX)*t; ball.y=(BY-30)-Math.sin(t*Math.PI)*ball.peak; }
+  // worp counter
+  if (phase !== "idle") {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "600 13px Fredoka, sans-serif";
+    ctx.shadowColor = "rgba(0,0,0,0.45)"; ctx.shadowBlur = 3;
+    ctx.fillText("Worp " + throwNum + " van 5", 13, 22);
+    ctx.shadowBlur = 0; ctx.textAlign = "center";
+  }
+}
+
+// ── main loop ─────────────────────────────────────────────────────────────────
+
+function loop() {
+  ctx.clearRect(0, 0, W, H);
+
+  drawSky();
+  drawStands();
+  drawField();
+
+  const t = (phase === "throwing") ? getT() : 0.05;
+  drawPitcher(t);
+
+  if (phase === "throwing") {
+    drawBallInFlight(t);
+    // auto-miss when ball passes plate
+    if (t >= 1.02) {
+      resultText = "Te laat! ❌"; resultDist = 0;
+      phase = "miss"; swingSwinging = true; swingAnimT = 0;
+      setTimeout(afterSwing, 1900);
     }
-    draw();
-    requestAnimationFrame(loop);
   }
 
-  cv.addEventListener("pointerdown",()=>{ if(phase!=="idle"&&phase!=="fly"&&phase!=="between"&&phase!=="land") act(); });
-  document.addEventListener("keydown",e=>{ if(e.key===" "||e.key==="Enter"){ e.preventDefault();
-    if(phase!=="idle"&&phase!=="fly"&&phase!=="between"&&phase!=="land") act(); }});
-  $("startBtn").onclick=startGame;
-  $("againBtn").onclick=startGame;
-  draw(); requestAnimationFrame(loop);
+  drawFlyBall();
+  drawBat();
+  drawHitZone();
+  drawUI();
+
+  requestAnimationFrame(loop);
+}
+
+// ── input ──────────────────────────────────────────────────────────────────────
+
+cv.addEventListener("pointerdown", () => { if (phase === "throwing") doSwing(); });
+document.addEventListener("keydown", e => {
+  if ((e.key === " " || e.key === "Enter") && phase === "throwing") { e.preventDefault(); doSwing(); }
+});
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
