@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breuken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --violet:#f59e0b;
+    --violet-dark:#d97706;
+    --amber:#f59e0b;
+    --amber-dark:#d97706;
+    --amber-pale:#fff8e7;
+    --pizza-fill:#f97316;
+    --pizza-crust:#d97706;
+    --pizza-empty:#fef3c7;
+    --pizza-border:#e5e7eb;
+  }
+
+  .card{
+    background:#fff;
+    width:100%;
+    max-width:560px;
+    border-radius:30px;
+    padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);
+    text-align:center;
+  }
+
+  h1{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:2rem;
+    color:var(--amber-dark);
+  }
+
+  .sub{
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-top:4px;
+    margin-bottom:14px;
+  }
+
+  .best{
+    color:var(--amber-dark);
+    font-weight:800;
+    font-size:.9rem;
+    margin-bottom:12px;
+    min-height:1.1em;
+  }
+
+  .levelbar{
+    display:flex;
+    gap:7px;
+    justify-content:center;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--amber);transform:scale(1.3);}
+
+  /* ---- Pizza visual ---- */
+  .pizza-wrap{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:6px auto 12px;
+    position:relative;
+  }
+
+  #pizzaCanvas{
+    border-radius:50%;
+    filter:drop-shadow(0 6px 12px rgba(217,119,6,.25));
+  }
+
+  /* Fraction text label below the pizza */
+  .frac-label{
+    font-family:'Fredoka',sans-serif;
+    font-size:2.2rem;
+    font-weight:700;
+    color:var(--amber-dark);
+    line-height:1;
+    margin:0 0 14px;
+    letter-spacing:.01em;
+  }
+
+  /* Mode badge */
+  .mode-badge{
+    display:inline-block;
+    background:var(--amber-pale);
+    color:var(--amber-dark);
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:.85rem;
+    border-radius:20px;
+    padding:4px 12px;
+    margin-bottom:10px;
+    letter-spacing:.02em;
+  }
+
+  /* Question text */
+  .qhint{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    color:var(--ink);
+    font-size:1.15rem;
+    margin:2px 0 16px;
+  }
+
+  /* Answer options grid */
+  .opts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .opt{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.5rem;
+    color:var(--ink);
+    background:var(--surface);
+    border:none;
+    border-radius:16px;
+    padding:16px 0;
+    cursor:pointer;
+    box-shadow:0 5px 0 var(--surface2);
+    transition:transform .06s;
+    line-height:1.2;
+  }
+
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .opt:disabled{cursor:default;}
+
+  /* Visual option buttons (show mini-pizza) */
+  .opt canvas{
+    display:block;
+    margin:0 auto 4px;
+    border-radius:50%;
+  }
+
+  .opt.visual{
+    padding:10px 6px 10px;
+    font-size:.9rem;
+  }
+
+  .feedback{
+    min-height:30px;
+    font-family:'Fredoka',sans-serif;
+    font-size:1.2rem;
+    font-weight:600;
+    margin-top:14px;
+  }
+
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  /* Confetti canvas overlay */
+  #confettiCanvas{
+    position:fixed;
+    top:0;left:0;
+    width:100%;height:100%;
+    pointer-events:none;
+    z-index:100;
+    display:none;
+  }
+
+  /* End screen */
+  .end-emoji{font-size:3.4rem;margin-bottom:4px;}
+
+  /* Hint footer */
+  .hint-foot{
+    font-size:.82rem;
+    color:var(--ink-soft);
+    margin-top:18px;
+    font-weight:700;
+  }
+
+  /* The big fraction display for mode B */
+  .big-frac{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0;
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    color:var(--amber-dark);
+    line-height:1.05;
+    margin:8px auto 14px;
+  }
+
+  .big-frac .num{font-size:3rem;}
+  .big-frac .bar{
+    width:48px;
+    height:4px;
+    background:var(--amber-dark);
+    border-radius:3px;
+    margin:2px 0;
+  }
+  .big-frac .den{font-size:3rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Vraag</span><span class="val" id="qnum">0</span><span class="lbl">/10</span></div>
+  </div>
+
+  <div class="card">
+    <h1>🍕 Breuken</h1>
+    <p class="sub">Hoe groot is het stuk?</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <p class="qhint">Kijk naar de pizza en kies de juiste breuk. 10 vragen!</p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+      <p class="hint-foot">Oefen breuken: halven, kwarten, derdelen en meer.</p>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+      <div class="mode-badge" id="modeBadge">Welke breuk klopt?</div>
+
+      <!-- Mode A: show pizza, pick fraction text -->
+      <div id="modeA">
+        <div class="pizza-wrap">
+          <canvas id="pizzaCanvas" width="200" height="200"></canvas>
+        </div>
+        <div class="qhint" id="qhintA">Welke breuk zie je op de pizza?</div>
+      </div>
+
+      <!-- Mode B: show fraction text, pick matching pizza -->
+      <div id="modeB" class="hidden-el">
+        <div class="big-frac" id="bigFrac">
+          <span class="num" id="fracNumer">1</span>
+          <div class="bar"></div>
+          <span class="den" id="fracDenom">2</span>
+        </div>
+        <div class="qhint">Op welke pizza klopt deze breuk?</div>
+      </div>
+
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div class="end-emoji" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+  <canvas id="confettiCanvas"></canvas>
+
+<script>
+/* =====================================================================
+   Breuken – fractions game for children age 7-10
+   ===================================================================== */
+const TOTAL = 10;
+const BEST_KEY = "breuken_best";
+const $ = id => document.getElementById(id);
+
+/* ---- fraction definitions ---- */
+const FRACTIONS = [
+  {n:1, d:2},
+  {n:1, d:3},
+  {n:2, d:3},
+  {n:1, d:4},
+  {n:3, d:4},
+  {n:2, d:4},
+  {n:1, d:6},
+  {n:3, d:6},
+  {n:5, d:6},
+  {n:1, d:8},
+  {n:3, d:8},
+  {n:5, d:8},
+  {n:7, d:8},
+];
+
+const fracKey  = f => f.n + "/" + f.d;
+const fracEq   = (a, b) => a.n === b.n && a.d === b.d;
+const shuffle  = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(p => p[1]);
+
+/* ---- state ---- */
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e) {}
+let idx = 0, score = 0, cur = null, answered = false;
+
+function showBest() {
+  $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " / " + TOTAL) : "";
+}
+showBest();
+
+/* ---- pizza drawing ---- */
+function drawPizza(canvas, n, d, size) {
+  size = size || 200;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, size, size);
+  const cx = size / 2, cy = size / 2;
+  const R = size * 0.46;   // outer radius
+  const CR = size * 0.48;  // crust ring radius
+
+  /* draw crust ring */
+  ctx.beginPath();
+  ctx.arc(cx, cy, CR, 0, Math.PI * 2);
+  ctx.fillStyle = "#d97706";
+  ctx.fill();
+
+  /* draw slices */
+  const startAngle = -Math.PI / 2;
+  for (let i = 0; i < d; i++) {
+    const a0 = startAngle + (i / d) * Math.PI * 2;
+    const a1 = startAngle + ((i + 1) / d) * Math.PI * 2;
+    const colored = i < n;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = colored ? "#fb923c" : "#fef3c7";
+    ctx.fill();
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = size > 80 ? 2.5 : 1.5;
+    ctx.stroke();
+  }
+
+  /* cheese dots on colored slices (decorative — only for bigger canvas) */
+  if (size >= 120) {
+    ctx.fillStyle = "rgba(254,243,199,0.70)";
+    for (let i = 0; i < n; i++) {
+      const midAngle = startAngle + (i + 0.5) / d * Math.PI * 2;
+      const dist = R * 0.58;
+      const dotX = cx + Math.cos(midAngle) * dist;
+      const dotY = cy + Math.sin(midAngle) * dist;
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, size * 0.038, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  /* center dot */
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.045, 0, Math.PI * 2);
+  ctx.fillStyle = "#92400e";
+  ctx.fill();
+}
+
+/* ---- question generation ---- */
+function pickDistractors(correct, count) {
+  /* pick fractions different from correct, varied denominators if possible */
+  const pool = shuffle(FRACTIONS.filter(f => !fracEq(f, correct)));
+  return pool.slice(0, count);
+}
+
+function makeQuestion() {
+  const frac = FRACTIONS[Math.floor(Math.random() * FRACTIONS.length)];
+  /* alternate modes: even rounds = mode A (pizza → pick text), odd = mode B (text → pick pizza) */
+  const mode = idx % 2 === 0 ? "A" : "B";
+  const distractors = pickDistractors(frac, 3);
+  const opts = shuffle([frac, ...distractors]);
+  cur = { frac, mode, opts, answered: false };
+}
+
+/* ---- level bar ---- */
+function buildLevelbar() {
+  const bar = $("levelbar");
+  bar.innerHTML = "";
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement("div");
+    d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+    bar.appendChild(d);
+  }
+}
+
+/* ---- render question ---- */
+function render() {
+  answered = false;
+  buildLevelbar();
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("qnum").textContent = idx + 1;
+  makeQuestion();
+
+  const modeA = $("modeA"), modeB = $("modeB");
+  const badge = $("modeBadge");
+
+  if (cur.mode === "A") {
+    /* show pizza, player picks the fraction text */
+    modeA.classList.remove("hidden-el");
+    modeB.classList.add("hidden-el");
+    badge.textContent = "Welke breuk zie je?";
+    drawPizza($("pizzaCanvas"), cur.frac.n, cur.frac.d, 200);
+
+    const opts = $("opts");
+    opts.innerHTML = "";
+    opts.style.gridTemplateColumns = "1fr 1fr";
+    cur.opts.forEach(f => {
+      const btn = document.createElement("button");
+      btn.className = "opt";
+      /* display fraction as n/d with visual stacking */
+      btn.innerHTML = fracKey(f);
+      btn.dataset.key = fracKey(f);
+      btn.onclick = () => answerA(btn, f);
+      opts.appendChild(btn);
+    });
+
+  } else {
+    /* show fraction text, player picks the matching pizza */
+    modeA.classList.add("hidden-el");
+    modeB.classList.remove("hidden-el");
+    badge.textContent = "Welke pizza klopt?";
+    $("fracNumer").textContent = cur.frac.n;
+    $("fracDenom").textContent = cur.frac.d;
+
+    const opts = $("opts");
+    opts.innerHTML = "";
+    opts.style.gridTemplateColumns = "1fr 1fr";
+    cur.opts.forEach(f => {
+      const btn = document.createElement("button");
+      btn.className = "opt visual";
+      btn.dataset.key = fracKey(f);
+
+      /* mini-pizza inside the button */
+      const miniCanvas = document.createElement("canvas");
+      miniCanvas.width = 72;
+      miniCanvas.height = 72;
+      miniCanvas.style.borderRadius = "50%";
+      drawPizza(miniCanvas, f.n, f.d, 72);
+      btn.appendChild(miniCanvas);
+
+      const lbl = document.createElement("span");
+      lbl.textContent = fracKey(f);
+      btn.appendChild(lbl);
+      btn.onclick = () => answerB(btn, f);
+      opts.appendChild(btn);
+    });
+  }
+}
+
+/* ---- answer handling ---- */
+function answerA(btn, chosen) {
+  if (answered) return;
+  answered = true;
+  const fb = $("feedback");
+  [...$("opts").children].forEach(b => {
+    b.disabled = true;
+    if (b.dataset.key === fracKey(cur.frac)) b.classList.add("good");
+  });
+  if (fracEq(chosen, cur.frac)) {
+    score++;
+    $("score").textContent = score;
+    fb.className = "feedback good";
+    fb.textContent = "✅ Klopt precies!";
+  } else {
+    btn.classList.add("bad");
+    fb.className = "feedback bad";
+    fb.textContent = "❌ Het was " + fracKey(cur.frac);
+  }
+  idx++;
+  buildLevelbar();
+  setTimeout(() => { if (idx >= TOTAL) endGame(); else render(); }, 1150);
+}
+
+function answerB(btn, chosen) {
+  if (answered) return;
+  answered = true;
+  const fb = $("feedback");
+  [...$("opts").children].forEach(b => {
+    b.disabled = true;
+    if (b.dataset.key === fracKey(cur.frac)) b.classList.add("good");
+  });
+  if (fracEq(chosen, cur.frac)) {
+    score++;
+    $("score").textContent = score;
+    fb.className = "feedback good";
+    fb.textContent = "✅ Klopt precies!";
+  } else {
+    btn.classList.add("bad");
+    fb.className = "feedback bad";
+    fb.textContent = "❌ Het was " + fracKey(cur.frac);
+  }
+  idx++;
+  buildLevelbar();
+  setTimeout(() => { if (idx >= TOTAL) endGame(); else render(); }, 1150);
+}
+
+/* ---- game flow ---- */
+function startGame() {
+  idx = 0; score = 0;
+  $("score").textContent = 0;
+  $("qnum").textContent = 1;
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame() {
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+  let rec = false;
+  if (score > best) {
+    best = score; rec = true;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+  }
+  showBest();
+  $("endEmoji").textContent = score === TOTAL ? "🏆" : (score >= 7 ? "🎉" : "💪");
+  $("endTitle").textContent = score === TOTAL ? "Breukenkampioen!" : (score >= 7 ? "Goed gedaan!" : "Blijf oefenen!");
+  $("endText").innerHTML = "Je had <b>" + score + " van de " + TOTAL + "</b> goed!" + (rec && score > 0 ? " 🏅 record!" : "");
+  if (score >= 7) launchConfetti();
+}
+
+/* ---- confetti ---- */
+function launchConfetti() {
+  const canvas = $("confettiCanvas");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  canvas.style.display = "block";
+  const ctx = canvas.getContext("2d");
+
+  const COLORS = ["#f59e0b","#fb923c","#16a34a","#3b82f6","#ec4899","#a855f7","#06b6d4"];
+  const N = 120;
+  const pieces = Array.from({length: N}, () => ({
+    x: Math.random() * canvas.width,
+    y: -20 - Math.random() * 200,
+    w: 7 + Math.random() * 8,
+    h: 3 + Math.random() * 5,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    rot: Math.random() * Math.PI * 2,
+    vx: (Math.random() - 0.5) * 3,
+    vy: 2.5 + Math.random() * 3,
+    vr: (Math.random() - 0.5) * 0.15,
+    alpha: 1,
+  }));
+
+  let frame = 0;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rot += p.vr;
+      if (frame > 100) p.alpha -= 0.008;
+    });
+    frame++;
+    if (frame < 260 && pieces.some(p => p.alpha > 0)) {
+      requestAnimationFrame(draw);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.style.display = "none";
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+/* ---- init ---- */
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+</script>
+</body>
+</html>

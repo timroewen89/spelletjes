@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zinnen Bouwen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --accent:#0ea5e9;
+    --accent-dark:#0369a1;
+    --violet:var(--accent);
+    --violet-dark:var(--accent-dark);
+  }
+
+  /* ── layout ───────────────────────────────────────────── */
+  .top{width:100%;max-width:620px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:620px;border-radius:30px;padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--accent-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--accent-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+
+  /* ── progress dots ─────────────────────────────────────── */
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--accent);}
+  .dot.active{background:var(--accent);transform:scale(1.35);}
+
+  /* ── sentence construction bar ─────────────────────────── */
+  .sentence-area{
+    min-height:68px;
+    background:var(--surface);
+    border-radius:18px;
+    border:2.5px dashed var(--surface2);
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+    gap:8px;
+    padding:10px 14px;
+    margin-bottom:16px;
+    position:relative;
+    transition:border-color .25s, background .25s;
+  }
+  .sentence-area.correct{
+    background:#ecfdf5;
+    border-color:#2ED6A6;
+    border-style:solid;
+  }
+  .sentence-area.wrong{
+    background:#fff1f2;
+    border-color:var(--bad);
+    border-style:solid;
+  }
+  .sentence-area .placeholder{
+    font-family:'Fredoka',sans-serif;
+    font-size:1rem;
+    color:var(--ink-soft);
+    pointer-events:none;
+    opacity:.6;
+  }
+
+  /* words placed in sentence bar */
+  .placed-word{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.25rem;
+    color:var(--ink);
+    background:#fff;
+    border-radius:12px;
+    padding:7px 14px;
+    box-shadow:0 3px 0 rgba(43,45,107,.10);
+    cursor:pointer;
+    transition:transform .08s;
+  }
+  .placed-word:last-child{
+    /* subtle highlight on last placed word */
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  .placed-word:active{transform:translateY(2px);}
+  /* when correct, no hover effect */
+  .sentence-area.correct .placed-word{
+    cursor:default;
+    outline:none;
+    color:var(--good);
+  }
+  .sentence-area.wrong .placed-word{
+    cursor:default;
+    outline:none;
+    color:var(--bad);
+  }
+
+  /* ── tile rack ─────────────────────────────────────────── */
+  .tile-rack{
+    display:flex;flex-wrap:wrap;gap:10px;
+    justify-content:center;
+    min-height:58px;
+    margin-bottom:18px;
+  }
+
+  /* individual word tile */
+  .tile{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.35rem;
+    color:#fff;
+    border:none;
+    border-radius:16px;
+    padding:12px 20px;
+    cursor:pointer;
+    transition:transform .08s, box-shadow .08s, opacity .12s;
+    /* shadow-color set inline per tile */
+    box-shadow:0 6px 0 var(--tile-shadow);
+    line-height:1;
+    position:relative;
+  }
+  .tile:active{transform:translateY(4px);box-shadow:0 2px 0 var(--tile-shadow);}
+  .tile.used{
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(-4px);
+  }
+
+  /* ── controls row ──────────────────────────────────────── */
+  .controls{
+    display:flex;gap:12px;justify-content:center;align-items:center;
+    margin-bottom:8px;
+  }
+  .wis-btn{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.05rem;
+    color:var(--ink);
+    background:var(--surface);
+    border:none;
+    border-radius:14px;
+    padding:10px 22px;
+    cursor:pointer;
+    box-shadow:0 5px 0 var(--surface2);
+    transition:transform .07s;
+  }
+  .wis-btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .wis-btn:disabled{opacity:.4;pointer-events:none;}
+
+  /* ── feedback line ─────────────────────────────────────── */
+  .feedback{
+    min-height:34px;
+    font-family:'Fredoka',sans-serif;
+    font-size:1.25rem;
+    font-weight:600;
+    margin-top:2px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  /* ── start / end overlay content ──────────────────────── */
+  .qhint{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    color:var(--ink);
+    font-size:1.1rem;
+    margin:6px 0 18px;
+    line-height:1.45;
+  }
+  .hint-foot{
+    font-size:.85rem;
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-top:14px;
+  }
+
+  /* demo tiles on start screen */
+  .demo-tiles{
+    display:flex;gap:8px;flex-wrap:wrap;justify-content:center;
+    margin-bottom:18px;
+  }
+  .demo-tile{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.1rem;
+    color:#fff;
+    border-radius:14px;
+    padding:9px 16px;
+    box-shadow:0 5px 0 rgba(0,0,0,.15);
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+  <div class="top">
+    <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+    <div class="pill"><span class="lbl">Vraag</span><span class="val" id="qnum">0/20</span></div>
+  </div>
+
+  <div class="card">
+    <h1>✍️ Zinnen Bouwen</h1>
+    <p class="sub">Zet de woorden in de goede volgorde!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- ═══ START SCREEN ════════════════════════════════════ -->
+    <div id="startScreen">
+      <div class="demo-tiles">
+        <span class="demo-tile" style="background:#FF6B6B;box-shadow:0 5px 0 #c94f4f;">de</span>
+        <span class="demo-tile" style="background:#FFAA2E;box-shadow:0 5px 0 #c67f0a;">hond</span>
+        <span class="demo-tile" style="background:#9B7FF4;box-shadow:0 5px 0 #7156c9;">loopt</span>
+        <span class="demo-tile" style="background:#2ECFA8;box-shadow:0 5px 0 #1e9a7d;">snel</span>
+      </div>
+      <p class="qhint">Klik de woorden in de juiste volgorde<br>om een echte zin te maken.</p>
+      <button class="bigbtn" id="startBtn">Start spelen 🚀</button>
+      <p class="hint-foot">20 zinnen — hoe ver kom jij?</p>
+    </div>
+
+    <!-- ═══ PLAY SCREEN ══════════════════════════════════════ -->
+    <div id="playScreen" class="hidden-el">
+      <div class="sentence-area" id="sentenceArea">
+        <span class="placeholder" id="placeholder">Klik een woord om te beginnen…</span>
+      </div>
+      <div class="tile-rack" id="tileRack"></div>
+      <div class="controls">
+        <button class="wis-btn" id="wisBtn" disabled>↩ Wis laatste</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- ═══ END SCREEN ═══════════════════════════════════════ -->
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.4rem;margin-bottom:6px;" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+/* ───────────────────────────────────────────────────────────
+   DATA — 25 simple Dutch sentences for children age 7-10
+   Each entry: words[] is the correct order, display[] is for
+   the tile rack (identical but shuffled at runtime).
+─────────────────────────────────────────────────────────── */
+const SENTENCES = [
+  { words: ["De", "kat", "slaapt", "lekker"] },
+  { words: ["De", "hond", "loopt", "snel"] },
+  { words: ["Ik", "eet", "een", "appel"] },
+  { words: ["Het", "meisje", "leest", "een", "boek"] },
+  { words: ["De", "jongen", "speelt", "buiten"] },
+  { words: ["Mijn", "moeder", "kookt", "soep"] },
+  { words: ["De", "vogel", "vliegt", "hoog"] },
+  { words: ["Het", "kind", "drinkt", "melk"] },
+  { words: ["De", "fiets", "staat", "in", "de", "schuur"] },
+  { words: ["Ik", "speel", "met", "mijn", "vriendin"] },
+  { words: ["De", "zon", "schijnt", "vandaag"] },
+  { words: ["Het", "paard", "graast", "in", "het", "veld"] },
+  { words: ["Wij", "gaan", "naar", "school"] },
+  { words: ["De", "baby", "huilt", "hard"] },
+  { words: ["Ik", "zie", "een", "grote", "boom"] },
+  { words: ["De", "vis", "zwemt", "in", "het", "water"] },
+  { words: ["Mijn", "vader", "werkt", "thuis"] },
+  { words: ["Het", "konijn", "eet", "een", "wortel"] },
+  { words: ["De", "kinderen", "zingen", "een", "lied"] },
+  { words: ["Ik", "houd", "van", "chocolade"] },
+  { words: ["De", "auto", "rijdt", "heel", "snel"] },
+  { words: ["Mijn", "zus", "tekent", "een", "bloem"] },
+  { words: ["Het", "regent", "morgen", "niet"] },
+  { words: ["De", "leraar", "vertelt", "een", "verhaal"] },
+  { words: ["Wij", "spelen", "samen", "voetbal"] },
+];
+
+const TOTAL = 20;
+const BEST_KEY = "zinnen_best";
+
+/* tile colour palette — cycles across tiles */
+const TILE_COLORS = [
+  { bg:"#FF6B6B", shadow:"#c94f4f" },
+  { bg:"#FFAA2E", shadow:"#c67f0a" },
+  { bg:"#9B7FF4", shadow:"#7156c9" },
+  { bg:"#2ECFA8", shadow:"#1e9a7d" },
+  { bg:"#F472B6", shadow:"#c0438c" },
+  { bg:"#84CC16", shadow:"#5a8a0e" },
+  { bg:"#0ea5e9", shadow:"#0369a1" },
+];
+
+/* ── state ──────────────────────────────────────────────── */
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e) {}
+
+let idx = 0, score = 0;
+let currentSentence = null; // { words, shuffled, placed[] }
+let answered = false;
+let roundPool = [];          // shuffled sentence indices for this game
+
+const $ = id => document.getElementById(id);
+
+/* ── helpers ────────────────────────────────────────────── */
+function showBest() {
+  $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " / " + TOTAL) : "";
+}
+showBest();
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildLevelbar() {
+  const bar = $("levelbar");
+  bar.innerHTML = "";
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement("div");
+    d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+    bar.appendChild(d);
+  }
+}
+
+/* ── sentence picking ───────────────────────────────────── */
+function buildRoundPool() {
+  // Use first TOTAL from a shuffled deck of all sentences
+  roundPool = shuffle([...Array(SENTENCES.length).keys()]).slice(0, TOTAL);
+}
+
+/* ── render a question ──────────────────────────────────── */
+function render() {
+  answered = false;
+  buildLevelbar();
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("qnum").textContent = (idx + 1) + "/" + TOTAL;
+
+  const sentIdx = roundPool[idx];
+  const sentence = SENTENCES[sentIdx];
+  const shuffled = shuffle(sentence.words);
+
+  currentSentence = {
+    words: sentence.words,
+    shuffled: shuffled,
+    placed: [],         // indices into shuffled[] that have been placed
+    tileOrder: shuffled // tile display order
+  };
+
+  renderSentenceArea();
+  renderTileRack();
+  $("wisBtn").disabled = true;
+}
+
+function renderSentenceArea() {
+  const area = $("sentenceArea");
+  area.className = "sentence-area";
+  area.innerHTML = "";
+
+  if (currentSentence.placed.length === 0) {
+    const ph = document.createElement("span");
+    ph.className = "placeholder";
+    ph.textContent = "Klik een woord om te beginnen…";
+    area.appendChild(ph);
+    return;
+  }
+
+  currentSentence.placed.forEach((tileIdx, posInPlaced) => {
+    const word = currentSentence.tileOrder[tileIdx];
+    const el = document.createElement("span");
+    el.className = "placed-word";
+    el.textContent = word;
+    // clicking removes this word (undo to this point)
+    if (!answered) {
+      el.onclick = () => undoTo(posInPlaced);
+    }
+    area.appendChild(el);
+  });
+}
+
+function renderTileRack() {
+  const rack = $("tileRack");
+  rack.innerHTML = "";
+
+  currentSentence.tileOrder.forEach((word, i) => {
+    const colorIdx = i % TILE_COLORS.length;
+    const { bg, shadow } = TILE_COLORS[colorIdx];
+    const btn = document.createElement("button");
+    btn.className = "tile" + (currentSentence.placed.includes(i) ? " used" : "");
+    btn.textContent = word;
+    btn.style.setProperty("background", bg);
+    btn.style.setProperty("--tile-shadow", shadow);
+    btn.dataset.tileIdx = i;
+    if (!currentSentence.placed.includes(i) && !answered) {
+      btn.onclick = () => placeTile(i);
+    }
+    rack.appendChild(btn);
+  });
+}
+
+/* ── interaction ────────────────────────────────────────── */
+function placeTile(tileIdx) {
+  if (answered) return;
+  currentSentence.placed.push(tileIdx);
+
+  // hide tile in rack immediately
+  const rack = $("tileRack");
+  const tileEl = rack.querySelector('[data-tile-idx="' + tileIdx + '"]');
+  if (tileEl) tileEl.classList.add("used");
+
+  renderSentenceArea();
+  $("wisBtn").disabled = currentSentence.placed.length === 0;
+
+  // check if all tiles placed
+  if (currentSentence.placed.length === currentSentence.tileOrder.length) {
+    checkAnswer();
+  }
+}
+
+function undoTo(posInPlaced) {
+  if (answered) return;
+  // Remove everything from posInPlaced onward
+  const removed = currentSentence.placed.splice(posInPlaced);
+
+  // un-hide those tiles
+  const rack = $("tileRack");
+  removed.forEach(tileIdx => {
+    const tileEl = rack.querySelector('[data-tile-idx="' + tileIdx + '"]');
+    if (tileEl) {
+      tileEl.classList.remove("used");
+      tileEl.onclick = () => placeTile(tileIdx);
+    }
+  });
+
+  renderSentenceArea();
+  $("wisBtn").disabled = currentSentence.placed.length === 0;
+}
+
+$("wisBtn").onclick = function() {
+  if (answered || currentSentence.placed.length === 0) return;
+  undoTo(currentSentence.placed.length - 1);
+};
+
+/* ── check answer ───────────────────────────────────────── */
+function checkAnswer() {
+  answered = true;
+  $("wisBtn").disabled = true;
+
+  const placed = currentSentence.placed.map(i => currentSentence.tileOrder[i]);
+  const correct = currentSentence.words;
+  const isCorrect = placed.every((w, i) => w === correct[i]);
+
+  const area = $("sentenceArea");
+  const fb = $("feedback");
+
+  if (isCorrect) {
+    score++;
+    $("score").textContent = score;
+    area.classList.add("correct");
+    fb.className = "feedback good";
+    fb.textContent = "✅ Super goed!";
+  } else {
+    area.classList.add("wrong");
+    fb.className = "feedback bad";
+    // show correct sentence
+    fb.innerHTML = '❌ Het was: <span style="color:var(--ink)">' +
+      correct.join(" ") + "</span>";
+  }
+
+  idx++;
+  buildLevelbar();
+
+  setTimeout(() => {
+    if (idx >= TOTAL) {
+      endGame();
+    } else {
+      render();
+    }
+  }, 1600);
+}
+
+/* ── game flow ──────────────────────────────────────────── */
+function startGame() {
+  idx = 0;
+  score = 0;
+  $("score").textContent = 0;
+  $("qnum").textContent = "1/" + TOTAL;
+  buildRoundPool();
+
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame() {
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+
+  let rec = false;
+  if (score > best) {
+    best = score;
+    rec = true;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+  }
+  showBest();
+
+  $("endEmoji").textContent = score === TOTAL ? "🏆" : (score >= 15 ? "🎉" : score >= 10 ? "👍" : "💪");
+  $("endTitle").textContent = score === TOTAL ? "Zinnenmeester!" : (score >= 15 ? "Heel goed gedaan!" : score >= 10 ? "Goed bezig!" : "Blijf oefenen!");
+  $("endText").innerHTML =
+    "Je had <b>" + score + " van de " + TOTAL + "</b> goed!" +
+    (rec && score > 0 ? " 🏅 Nieuw record!" : "");
+}
+
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+</script>
+</body>
+</html>

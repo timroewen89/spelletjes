@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De of Het</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#e11d48;--violet-dark:#9f0f2e;}
+
+  .top{width:100%;max-width:560px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .card{background:#fff;width:100%;max-width:560px;border-radius:30px;padding:26px 24px 30px;box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+
+  .levelbar{display:flex;gap:6px;justify-content:center;margin-bottom:18px;flex-wrap:wrap;}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:#f9a8b8;}
+  .dot.active{background:var(--violet);transform:scale(1.35);}
+
+  /* Word display */
+  .word-box{
+    background:linear-gradient(135deg,#fff0f4 0%,#ffe4ec 100%);
+    border:3px solid #fecdd3;
+    border-radius:24px;
+    padding:28px 20px 22px;
+    margin-bottom:20px;
+    position:relative;
+  }
+  .word-emoji{font-size:3.8rem;line-height:1;display:block;margin-bottom:10px;}
+  .word-noun{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:2.2rem;
+    color:var(--ink);
+    letter-spacing:.01em;
+  }
+
+  /* DE / HET buttons */
+  .dh-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .dh-btn{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:2rem;
+    letter-spacing:.06em;
+    color:#fff;
+    border:none;
+    border-radius:20px;
+    padding:22px 0;
+    cursor:pointer;
+    transition:transform .06s, box-shadow .06s;
+  }
+  .dh-btn.de-btn{
+    background:#e11d48;
+    box-shadow:0 7px 0 #9f0f2e;
+  }
+  .dh-btn.het-btn{
+    background:#7c3aed;
+    box-shadow:0 7px 0 #4c1d95;
+  }
+  .dh-btn:active{transform:translateY(4px);}
+  .dh-btn.de-btn:active{box-shadow:0 3px 0 #9f0f2e;}
+  .dh-btn.het-btn:active{box-shadow:0 3px 0 #4c1d95;}
+  .dh-btn:disabled{cursor:default;opacity:.7;}
+
+  .dh-btn.correct-de{background:#16a34a;box-shadow:0 7px 0 #11823b;}
+  .dh-btn.correct-het{background:#16a34a;box-shadow:0 7px 0 #11823b;}
+  .dh-btn.wrong-pick{background:#dc2626;box-shadow:0 7px 0 #a81d1d;}
+
+  /* Feedback area */
+  .feedback{
+    min-height:38px;
+    font-family:'Fredoka',sans-serif;
+    font-size:1.15rem;
+    font-weight:600;
+    margin-bottom:4px;
+    border-radius:14px;
+    padding:0 8px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  /* Rule tip box */
+  .rule-tip{
+    min-height:36px;
+    font-family:'Nunito',sans-serif;
+    font-size:.9rem;
+    font-weight:700;
+    color:#7c3aed;
+    background:#f5f3ff;
+    border-radius:12px;
+    padding:8px 12px;
+    margin-top:8px;
+    display:none;
+    line-height:1.4;
+  }
+  .rule-tip.show{display:block;}
+
+  /* hint footer */
+  .hint-foot{
+    font-size:.82rem;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin-top:14px;
+  }
+
+  /* End screen percentage */
+  .pct-ring{
+    width:110px;height:110px;margin:10px auto 14px;position:relative;
+  }
+  .pct-ring svg{width:100%;height:100%;}
+  .pct-label{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.6rem;color:var(--violet-dark);
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill"><span class="lbl">Ronde</span><span class="val" id="roundPill">0/20</span></div>
+    <div class="pill"><span class="lbl">Goed</span><span class="val" id="scorePill">0</span></div>
+  </div>
+
+  <div class="card">
+    <h1>🇳🇱 De of Het?</h1>
+    <p class="sub">Kies het juiste lidwoord!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <div style="font-size:2.8rem;margin-bottom:10px">🇳🇱</div>
+      <p class="sub" style="font-size:1rem">Hoor je een woord? Kies dan <strong style="color:#e11d48">DE</strong> of <strong style="color:#7c3aed">HET</strong>!<br>20 vragen — hoeveel haal jij goed?</p>
+      <button class="bigbtn" id="startBtn" style="margin-top:10px">Start 🚀</button>
+      <p class="hint-foot">Tip: woorden eindigend op -je zijn altijd HET-woorden!</p>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+      <div class="word-box">
+        <span class="word-emoji" id="wordEmoji">🚗</span>
+        <span class="word-noun" id="wordNoun">auto</span>
+      </div>
+      <div class="dh-grid">
+        <button class="dh-btn de-btn" id="btnDe" onclick="answer('de')">DE</button>
+        <button class="dh-btn het-btn" id="btnHet" onclick="answer('het')">HET</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+      <div class="rule-tip" id="ruleTip"></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.2rem;margin-bottom:6px" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <div class="pct-ring" id="pctRing">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#fecdd3" stroke-width="10"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#e11d48" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="263.9" id="pctArc"
+            stroke-dashoffset="263.9" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="pct-label" id="pctLabel">0%</div>
+      </div>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+  const TOTAL = 20, BEST_KEY = "deofhet_best";
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e) {}
+  let idx = 0, score = 0, cur = null, answered = false;
+  let usedIndices = [];
+
+  const $ = id => document.getElementById(id);
+
+  // ── Word bank: 45 common Dutch nouns children know ──────────────────────────
+  // Each entry: [emoji, noun, article ('de'|'het'), rule hint]
+  const WORDS = [
+    ["🚗", "auto",        "de",  "Voertuigen zijn bijna altijd DE-woorden."],
+    ["🏠", "huis",        "het", "HET huis — veel gebouwen zijn HET-woorden."],
+    ["🐶", "hond",        "de",  "Dieren zijn meestal DE-woorden."],
+    ["🐱", "kat",         "de",  "Dieren zijn meestal DE-woorden."],
+    ["⚽", "bal",         "de",  "DE bal — sport-objecten zijn vaak DE-woorden."],
+    ["📚", "boek",        "het", "HET boek — dingen die je leest zijn vaak HET."],
+    ["🌳", "boom",        "de",  "DE boom — plantennamen zijn bijna altijd DE."],
+    ["🌷", "bloem",       "de",  "DE bloem — plantennamen zijn bijna altijd DE."],
+    ["🍎", "appel",       "de",  "DE appel — fruitnamen zijn bijna altijd DE."],
+    ["🥖", "brood",       "het", "HET brood — veel etenswaren zijn HET-woorden."],
+    ["🥛", "glas",        "het", "HET glas — verkleiningsvormen en materialen: HET."],
+    ["✏️", "potlood",     "het", "Woorden eindigend op -lood zijn HET-woorden."],
+    ["🪑", "stoel",       "de",  "DE stoel — meubilair is bijna altijd DE."],
+    ["🛏️", "bed",         "het", "HET bed — slaapkamerwoorden zijn vaak HET."],
+    ["🌙", "maan",        "de",  "DE maan — hemellichamen zijn DE-woorden."],
+    ["☀️", "zon",         "de",  "DE zon — hemellichamen zijn DE-woorden."],
+    ["⭐", "ster",        "de",  "DE ster — hemellichamen zijn DE-woorden."],
+    ["🌈", "regenboog",   "de",  "DE regenboog — weerverschijnselen zijn DE."],
+    ["🌧️", "regen",      "de",  "DE regen — weerverschijnselen zijn DE."],
+    ["❄️", "sneeuw",      "de",  "DE sneeuw — weerverschijnselen zijn DE."],
+    ["🐠", "vis",         "de",  "Dieren zijn meestal DE-woorden."],
+    ["🐘", "olifant",     "de",  "Dieren zijn meestal DE-woorden."],
+    ["🐴", "paard",       "het", "HET paard — uitzonderingen zijn er altijd!"],
+    ["🦆", "eend",        "de",  "Dieren zijn meestal DE-woorden."],
+    ["🐇", "konijn",      "het", "HET konijn — uitzonderingen zijn er altijd!"],
+    ["🍕", "pizza",       "de",  "Leenwoorden eindigend op -a zijn DE-woorden."],
+    ["🎂", "taart",       "de",  "DE taart — zoetwaren zijn bijna altijd DE."],
+    ["🍭", "snoepje",     "het", "Woorden eindigend op -je zijn ALTIJD HET!"],
+    ["🎈", "ballon",      "de",  "DE ballon — voorwerpen eindigend op -on zijn DE."],
+    ["🎁", "cadeautje",   "het", "Woorden eindigend op -je zijn ALTIJD HET!"],
+    ["🪁", "speelgoed",   "het", "HET speelgoed — samengestelde woorden met 'goed': HET."],
+    ["🚲", "fiets",       "de",  "DE fiets — voertuigen zijn bijna altijd DE."],
+    ["✈️", "vliegtuig",   "het", "HET vliegtuig — voertuigen eindigend op -tuig: HET."],
+    ["🚢", "schip",       "het", "HET schip — watervaartuigen zijn HET-woorden."],
+    ["🏫", "school",      "de",  "DE school — gebouwen zijn vaak DE-woorden."],
+    ["🏥", "ziekenhuis",  "het", "HET ziekenhuis — woorden met -huis zijn HET."],
+    ["🌍", "wereld",      "de",  "DE wereld — abstracte begrippen zijn vaak DE."],
+    ["🗺️", "kaart",       "de",  "DE kaart — papieren dingen zijn vaak DE."],
+    ["🎵", "lied",        "het", "HET lied — kunst- en muziekwoorden: HET."],
+    ["🎨", "schilderij",  "het", "Woorden eindigend op -ij zijn HET-woorden."],
+    ["💧", "water",       "het", "HET water — vloeistoffen zijn HET-woorden."],
+    ["🔥", "vuur",        "het", "HET vuur — elementen zijn HET-woorden."],
+    ["🌊", "zee",         "de",  "DE zee — geografische namen zijn DE-woorden."],
+    ["🏔️", "berg",        "de",  "DE berg — natuurformaties zijn DE-woorden."],
+    ["🌾", "veld",        "het", "HET veld — open landschappen zijn HET-woorden."],
+  ];
+
+  function showBest() {
+    $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " / " + TOTAL) : "";
+  }
+  showBest();
+
+  function buildLevelbar() {
+    const b = $("levelbar"); b.innerHTML = "";
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement("div");
+      d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+      b.appendChild(d);
+    }
+  }
+
+  function pickWord() {
+    // Refill pool when exhausted
+    if (usedIndices.length >= WORDS.length) usedIndices = [];
+    let tries = 0, idx2;
+    do { idx2 = Math.floor(Math.random() * WORDS.length); tries++; }
+    while (usedIndices.includes(idx2) && tries < 80);
+    usedIndices.push(idx2);
+    return WORDS[idx2];
+  }
+
+  function render() {
+    answered = false;
+    buildLevelbar();
+    $("feedback").textContent = "";
+    $("feedback").className = "feedback";
+    $("ruleTip").textContent = "";
+    $("ruleTip").className = "rule-tip";
+
+    cur = pickWord();
+    $("wordEmoji").textContent = cur[0];
+    $("wordNoun").textContent = cur[1];
+
+    $("roundPill").textContent = (idx + 1) + "/" + TOTAL;
+
+    const de = $("btnDe"), het = $("btnHet");
+    de.disabled = false; het.disabled = false;
+    de.className = "dh-btn de-btn";
+    het.className = "dh-btn het-btn";
+  }
+
+  function answer(choice) {
+    if (answered) return;
+    answered = true;
+    const correct = cur[2];
+    const hint = cur[3];
+    const fb = $("feedback");
+    const tip = $("ruleTip");
+
+    $("btnDe").disabled = true;
+    $("btnHet").disabled = true;
+
+    if (choice === correct) {
+      score++;
+      $("scorePill").textContent = score;
+      fb.className = "feedback good";
+      fb.textContent = "✅ Goed zo! " + (correct === "de" ? "DE" : "HET") + " " + cur[1] + " is correct!";
+    } else {
+      fb.className = "feedback bad";
+      fb.textContent = "❌ Het is " + (correct === "de" ? "DE" : "HET") + " " + cur[1] + "!";
+      tip.textContent = "💡 " + hint;
+      tip.className = "rule-tip show";
+
+      // Highlight correct button green, wrong button red
+      if (correct === "de") {
+        $("btnDe").className = "dh-btn correct-de";
+        $("btnDe").style.boxShadow = "0 7px 0 #11823b";
+        $("btnHet").className = "dh-btn wrong-pick";
+        $("btnHet").style.boxShadow = "0 7px 0 #a81d1d";
+      } else {
+        $("btnHet").className = "dh-btn correct-het";
+        $("btnHet").style.boxShadow = "0 7px 0 #11823b";
+        $("btnDe").className = "dh-btn wrong-pick";
+        $("btnDe").style.boxShadow = "0 7px 0 #a81d1d";
+      }
+    }
+
+    idx++;
+    buildLevelbar();
+    setTimeout(() => {
+      if (idx >= TOTAL) endGame();
+      else render();
+    }, choice === correct ? 1000 : 1600);
+  }
+
+  function startGame() {
+    idx = 0; score = 0; usedIndices = [];
+    $("scorePill").textContent = "0";
+    $("roundPill").textContent = "1/20";
+    $("startScreen").classList.add("hidden-el");
+    $("endScreen").classList.add("hidden-el");
+    $("playScreen").classList.remove("hidden-el");
+    render();
+  }
+
+  function endGame() {
+    $("playScreen").classList.add("hidden-el");
+    $("endScreen").classList.remove("hidden-el");
+
+    let rec = false;
+    if (score > best) {
+      best = score;
+      rec = true;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+    }
+    showBest();
+
+    const pct = Math.round((score / TOTAL) * 100);
+    // Animate SVG arc
+    const circ = 2 * Math.PI * 42; // ≈263.9
+    const offset = circ - (pct / 100) * circ;
+    const arc = $("pctArc");
+    arc.style.transition = "stroke-dashoffset 1s ease";
+    arc.style.strokeDashoffset = String(offset);
+    $("pctLabel").textContent = pct + "%";
+
+    $("endEmoji").textContent = score === TOTAL ? "🏆" : (score >= 16 ? "🎉" : score >= 12 ? "👍" : "💪");
+    $("endTitle").textContent = score === TOTAL ? "Perfecte score!" : (score >= 16 ? "Geweldig!" : score >= 12 ? "Goed gedaan!" : "Blijf oefenen!");
+    $("endText").innerHTML = "Je had <b>" + score + " van de " + TOTAL + "</b> goed (" + pct + "%)" + (rec && score > 0 ? " 🏅 nieuw record!" : "") + "!";
+  }
+
+  $("startBtn").onclick = startGame;
+  $("againBtn").onclick = startGame;
+</script>
+</body>
+</html>

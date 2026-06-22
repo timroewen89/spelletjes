@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verkeersregels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --violet:#ef4444;
+    --violet-dark:#b91c1c;
+    /* road palette */
+    --road:#1e2733;
+    --road-mid:#263040;
+    --road-line:#FFC83D;
+    --road-text:#F8F6F0;
+    --road-soft:rgba(248,246,240,0.6);
+  }
+
+  /* ── Card is asphalt — the aesthetic anchor of this game ── */
+  .card{
+    position:relative;
+    background:var(--road);
+    width:100%;max-width:560px;
+    border-radius:30px;padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(20,26,36,.38),0 2px 0 rgba(255,255,255,.06) inset;
+    text-align:center;overflow:hidden;
+  }
+  /* Dashed yellow center line — road marking running through the card */
+  .card::before{
+    content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;
+    background:repeating-linear-gradient(to bottom,var(--road-line) 0,var(--road-line) 18px,transparent 18px,transparent 32px);
+    opacity:.16;pointer-events:none;
+  }
+  /* Subtle asphalt grain */
+  .card::after{
+    content:'';position:absolute;inset:0;border-radius:30px;
+    background:repeating-linear-gradient(135deg,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 1px,transparent 8px);
+    pointer-events:none;
+  }
+
+  /* ── Typography on dark card ── */
+  .card h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:1.9rem;color:var(--road-text);}
+  .card .sub{color:var(--road-soft);font-weight:700;margin-top:4px;margin-bottom:14px;font-size:.95rem;}
+  .card .best{color:var(--road-line);font-weight:800;font-size:.88rem;margin-bottom:12px;min-height:1.1em;}
+
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+  .dot{width:11px;height:11px;border-radius:50%;background:rgba(255,255,255,.15);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--road-line);transform:scale(1.35);}
+
+  .mode-badge{
+    display:inline-block;font-family:'Fredoka',sans-serif;font-weight:600;font-size:.78rem;
+    letter-spacing:.07em;text-transform:uppercase;padding:4px 13px;border-radius:20px;margin-bottom:10px;
+  }
+  .mode-badge.borden{background:rgba(239,68,68,.18);color:#fca5a5;border:1px solid rgba(239,68,68,.3);}
+  .mode-badge.situatie{background:rgba(59,130,246,.18);color:#93c5fd;border:1px solid rgba(59,130,246,.3);}
+
+  #signCanvas{display:block;margin:0 auto 4px;border-radius:16px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.5));}
+  #situatieCanvas{display:block;margin:0 auto 4px;border-radius:14px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4));}
+
+  .qhint{font-family:'Fredoka',sans-serif;font-weight:600;color:var(--road-text);font-size:1.05rem;margin:6px 0 14px;line-height:1.4;}
+
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .opt{
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:.95rem;
+    color:var(--road-text);background:rgba(255,255,255,.1);
+    border:1.5px solid rgba(255,255,255,.12);border-radius:16px;
+    padding:13px 8px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.3);
+    transition:transform .06s,background .1s;line-height:1.3;
+  }
+  .opt:hover{background:rgba(255,255,255,.16);}
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3);}
+  .opt:focus-visible{outline:2px solid var(--road-line);outline-offset:2px;}
+  .opt.good{background:var(--good);color:#fff;border-color:transparent;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;border-color:transparent;box-shadow:0 5px 0 #a81d1d;}
+  .opt:disabled{cursor:default;}
+
+  .feedback{min-height:30px;font-family:'Fredoka',sans-serif;font-size:1.1rem;font-weight:600;margin-top:12px;color:var(--road-soft);}
+  .feedback.good{color:#4ade80;}
+  .feedback.bad{color:#f87171;}
+
+  /* start screen */
+  .start-desc{font-family:'Nunito',sans-serif;font-weight:700;color:var(--road-soft);margin-bottom:20px;font-size:.98rem;line-height:1.55;}
+  .mode-preview{display:flex;gap:12px;justify-content:center;margin-bottom:22px;flex-wrap:wrap;}
+  .mode-card{
+    background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.12);
+    border-radius:16px;padding:14px 16px;font-family:'Fredoka',sans-serif;font-weight:600;
+    font-size:.9rem;color:var(--road-text);flex:1;min-width:110px;max-width:160px;
+  }
+  .mode-card span{display:block;font-size:1.9rem;margin-bottom:5px;}
+
+  .hint-foot{margin-top:14px;font-family:'Nunito',sans-serif;font-size:.82rem;color:var(--road-soft);font-weight:700;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Vraag</span><span class="val" id="qnum">0</span><span class="lbl"style="margin-left:2px">/ 15</span></div>
+  <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+</div>
+
+<div class="card">
+  <h1>🚦 Verkeersregels</h1>
+  <p class="sub">Ken jij de verkeersregels?</p>
+  <div class="best" id="best"></div>
+  <div class="levelbar" id="levelbar"></div>
+
+  <!-- START SCREEN -->
+  <div id="startScreen">
+    <p class="start-desc">15 vragen over verkeersborden en situaties op de weg. Wie heeft voorrang? Wat betekent dit bord?</p>
+    <div class="mode-preview">
+      <div class="mode-card"><span>🔺</span>Borden herkennen</div>
+      <div class="mode-card"><span>🗺️</span>Wie heeft voorrang?</div>
+    </div>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+    <p class="hint-foot">Lees het bord of de situatie goed — dan kies jij het juiste antwoord!</p>
+  </div>
+
+  <!-- PLAY SCREEN -->
+  <div id="playScreen" class="hidden-el">
+    <div class="mode-badge" id="modeBadge">Bord</div>
+    <canvas id="signCanvas" width="220" height="220" aria-label="Verkeersbord"></canvas>
+    <canvas id="situatieCanvas" width="260" height="260" aria-label="Verkeerssituatie" class="hidden-el"></canvas>
+    <div class="qhint" id="qhint"></div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="endScreen" class="hidden-el">
+    <div style="font-size:3.4rem" id="endEmoji">🎉</div>
+    <h1 id="endTitle">Goed gedaan!</h1>
+    <p class="sub" id="endText"></p>
+    <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const TOTAL=15, BEST_KEY="verkeer_best";
+let best=0; try{best=parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0;}catch(e){}
+let idx=0, score=0, cur=null, answered=false, questions=[];
+const $=id=>document.getElementById(id);
+function showBest(){ $("best").textContent=best>0?("🏅 Beste: "+best+" / "+TOTAL):""; } showBest();
+
+// ─── SIGN DRAWING HELPERS ─────────────────────────────────────────────────────
+function drawSign(canvas, drawFn){
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // drop shadow behind sign
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,0.22)";
+  ctx.shadowBlur=18;
+  ctx.shadowOffsetY=6;
+  drawFn(ctx, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+// White circle background helper
+function drawSignPost(ctx, cx, cy, r){
+  // Post
+  ctx.beginPath();
+  ctx.rect(cx-4, cy+r, 8, 50);
+  const pg=ctx.createLinearGradient(cx-4,cy+r, cx+4,cy+r);
+  pg.addColorStop(0,"#a0a0a0"); pg.addColorStop(0.5,"#d8d8d8"); pg.addColorStop(1,"#a0a0a0");
+  ctx.fillStyle=pg; ctx.fill();
+}
+
+// STOP sign (octagon, red, white text)
+function drawStop(ctx, w, h){
+  const cx=w/2, cy=h/2-10, r=80;
+  drawSignPost(ctx,cx,cy,r);
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,0.22)"; ctx.shadowBlur=18; ctx.shadowOffsetY=6;
+  ctx.beginPath();
+  for(let i=0;i<8;i++){
+    const a=(i*45-22.5)*Math.PI/180;
+    const x=cx+r*Math.cos(a), y=cy+r*Math.sin(a);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.fillStyle="#dc2626"; ctx.fill();
+  ctx.strokeStyle="#b91c1c"; ctx.lineWidth=4; ctx.stroke();
+  // White border inside
+  ctx.beginPath();
+  for(let i=0;i<8;i++){
+    const a=(i*45-22.5)*Math.PI/180;
+    const x=cx+(r-10)*Math.cos(a), y=cy+(r-10)*Math.sin(a);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle="#fff"; ctx.lineWidth=3; ctx.stroke();
+  ctx.font="bold 32px Fredoka,sans-serif"; ctx.fillStyle="#fff";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("STOP", cx, cy+2);
+  ctx.restore();
+}
+
+// Red-bordered triangle (warning / voorrang verlenen)
+function drawTriangle(ctx, w, h, fillColor, borderColor, innerContent){
+  const cx=w/2, top=18, boty=h/2+72, r=92;
+  drawSignPost(ctx, cx, boty, 0);
+  ctx.save();
+  // outer red triangle
+  ctx.beginPath();
+  ctx.moveTo(cx, top-4);
+  ctx.lineTo(cx-r+5, boty+6);
+  ctx.lineTo(cx+r-5, boty+6);
+  ctx.closePath();
+  ctx.fillStyle=borderColor; ctx.fill();
+  // white fill inside
+  const inset=12;
+  ctx.beginPath();
+  ctx.moveTo(cx, top+inset+2);
+  ctx.lineTo(cx-r+inset+18, boty+4);
+  ctx.lineTo(cx+r-inset-18, boty+4);
+  ctx.closePath();
+  ctx.fillStyle=fillColor; ctx.fill();
+  if(innerContent) innerContent(ctx, cx, (top+boty)/2+6, boty-top-inset*2);
+  ctx.restore();
+}
+
+// Voorrang verlenen: inverted red triangle
+function drawVoorrangVerlenen(ctx, w, h){
+  const cx=w/2, top=15, boty=h/2+70;
+  drawSignPost(ctx,cx,boty,0);
+  ctx.save();
+  // White triangle pointing down with red border
+  const r=90;
+  ctx.beginPath();
+  ctx.moveTo(cx, boty+8);
+  ctx.lineTo(cx-r, top+2);
+  ctx.lineTo(cx+r, top+2);
+  ctx.closePath();
+  ctx.fillStyle="#dc2626"; ctx.fill();
+  const inset=12;
+  ctx.beginPath();
+  ctx.moveTo(cx, boty-inset+2);
+  ctx.lineTo(cx-r+inset+8, top+inset+4);
+  ctx.lineTo(cx+r-inset-8, top+inset+4);
+  ctx.closePath();
+  ctx.fillStyle="#fff"; ctx.fill();
+  ctx.restore();
+}
+
+// Red circle (prohibition)
+function drawRedCircle(ctx, w, h, innerDraw){
+  const cx=w/2, cy=h/2-8, r=84;
+  drawSignPost(ctx,cx,cy,r);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle="#dc2626"; ctx.fill();
+  ctx.beginPath(); ctx.arc(cx,cy,r-10,0,Math.PI*2);
+  ctx.fillStyle="#fff"; ctx.fill();
+  if(innerDraw) innerDraw(ctx, cx, cy, r-14);
+  ctx.restore();
+}
+
+// Blue circle (obligation)
+function drawBlueCircle(ctx, w, h, innerDraw){
+  const cx=w/2, cy=h/2-8, r=84;
+  drawSignPost(ctx,cx,cy,r);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle="#1d4ed8"; ctx.fill();
+  if(innerDraw) innerDraw(ctx, cx, cy, r-10);
+  ctx.restore();
+}
+
+// Blue rectangle (information)
+function drawBlueRect(ctx, w, h, innerDraw){
+  const cx=w/2, cy=h/2-8;
+  const rw=160, rh=130, rx=cx-rw/2, ry=cy-rh/2;
+  drawSignPost(ctx,cx,cy+rh/2,0);
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(rx,ry,rw,rh,12);
+  ctx.fillStyle="#1d4ed8"; ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(rx+8,ry+8,rw-16,rh-16,7);
+  ctx.strokeStyle="rgba(255,255,255,0.6)"; ctx.lineWidth=2; ctx.stroke();
+  if(innerDraw) innerDraw(ctx, cx, cy, rw, rh);
+  ctx.restore();
+}
+
+// Draw arrow
+function drawArrow(ctx, cx, cy, size, color, direction){
+  ctx.save();
+  ctx.fillStyle=color||"#fff";
+  ctx.translate(cx,cy);
+  const rot={right:0, left:Math.PI, up:-Math.PI/2, down:Math.PI/2}[direction]||0;
+  ctx.rotate(rot);
+  ctx.beginPath();
+  const s=size;
+  ctx.moveTo(s*0.5, 0);
+  ctx.lineTo(0, -s*0.4);
+  ctx.lineTo(0, -s*0.15);
+  ctx.lineTo(-s*0.5, -s*0.15);
+  ctx.lineTo(-s*0.5, s*0.15);
+  ctx.lineTo(0, s*0.15);
+  ctx.lineTo(0, s*0.4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// Draw speed number
+function drawSpeedText(ctx, cx, cy, num, color){
+  ctx.save();
+  ctx.font="bold 54px Fredoka,sans-serif";
+  ctx.fillStyle=color||"#1d4ed8";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(String(num), cx, cy+2);
+  ctx.restore();
+}
+
+// Draw pedestrian crossing sign lines
+function drawCrossing(ctx, cx, cy, sz){
+  ctx.save();
+  ctx.fillStyle="#fff";
+  const stripW=sz*0.18, total=4;
+  const startX=cx-sz*0.4;
+  for(let i=0;i<total;i++){
+    ctx.fillRect(startX+i*(sz*0.25), cy-sz*0.35, stripW, sz*0.7);
+  }
+  // Pedestrian figure
+  ctx.fillStyle="#1d4ed8";
+  ctx.beginPath(); ctx.arc(cx, cy-sz*0.52, sz*0.1, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ─── SIGN DEFINITIONS ─────────────────────────────────────────────────────────
+const BORDEN=[
+  {
+    id:"stop",
+    draw:(c,w,h)=>drawStop(c,w,h),
+    vraag:"Wat betekent dit bord?",
+    correct:"STOP — je moet volledig stoppen",
+    fout:["Langzaam rijden","Je hebt voorrang","Verboden door te rijden"]
+  },
+  {
+    id:"voorrang_verlenen",
+    draw:(c,w,h)=>drawVoorrangVerlenen(c,w,h),
+    vraag:"Wat moet je doen bij dit bord?",
+    correct:"Voorrang verlenen aan ander verkeer",
+    fout:["Je hebt voorrang","Stoppen en wachten op politie","Links rijden"]
+  },
+  {
+    id:"max30",
+    draw:(c,w,h)=>drawRedCircle(c,w,h,(ctx,cx,cy,r)=>drawSpeedText(ctx,cx,cy,30,"#1f2937")),
+    vraag:"Wat is de maximumsnelheid hier?",
+    correct:"30 km/u — langzaam rijden",
+    fout:["50 km/u","100 km/u","Zo snel als je wilt"]
+  },
+  {
+    id:"max50",
+    draw:(c,w,h)=>drawRedCircle(c,w,h,(ctx,cx,cy,r)=>drawSpeedText(ctx,cx,cy,50,"#1f2937")),
+    vraag:"Hoe snel mag je hier rijden?",
+    correct:"Maximaal 50 km/u",
+    fout:["Maximaal 30 km/u","Maximaal 100 km/u","Geen snelheidslimiet"]
+  },
+  {
+    id:"max100",
+    draw:(c,w,h)=>drawRedCircle(c,w,h,(ctx,cx,cy,r)=>drawSpeedText(ctx,cx,cy,100,"#1f2937")),
+    vraag:"Hoe snel mag je hier rijden?",
+    correct:"Maximaal 100 km/u",
+    fout:["Maximaal 50 km/u","Maximaal 120 km/u","Maximaal 130 km/u"]
+  },
+  {
+    id:"verboden_inrijden",
+    draw:(c,w,h)=>drawRedCircle(c,w,h,(ctx,cx,cy,r)=>{
+      ctx.save();
+      ctx.fillStyle="#dc2626";
+      ctx.beginPath();
+      ctx.roundRect(cx-r*0.75, cy-r*0.2, r*1.5, r*0.4, 4);
+      ctx.fill();
+      ctx.restore();
+    }),
+    vraag:"Wat betekent dit bord?",
+    correct:"Verboden in te rijden",
+    fout:["Eenrichtingsverkeer","Parkeerverbod","Maximumsnelheid 100"]
+  },
+  {
+    id:"fietspad",
+    draw:(c,w,h)=>drawBlueCircle(c,w,h,(ctx,cx,cy,r)=>{
+      // Bicycle icon
+      ctx.save();
+      ctx.strokeStyle="#fff"; ctx.lineWidth=5; ctx.fillStyle="#fff";
+      // Wheels
+      ctx.beginPath(); ctx.arc(cx-22, cy+12, 20, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx+22, cy+12, 20, 0, Math.PI*2); ctx.stroke();
+      // Frame
+      ctx.beginPath();
+      ctx.moveTo(cx-22,cy+12);
+      ctx.lineTo(cx,cy-14);
+      ctx.lineTo(cx+22,cy+12);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx,cy-14);
+      ctx.lineTo(cx-10,cy+12);
+      ctx.stroke();
+      // Handlebar
+      ctx.beginPath();
+      ctx.moveTo(cx+22,cy+12);
+      ctx.lineTo(cx+14,cy-14);
+      ctx.lineTo(cx+28,cy-18);
+      ctx.stroke();
+      // Seat
+      ctx.beginPath();
+      ctx.moveTo(cx-5,cy-18);
+      ctx.lineTo(cx+6,cy-18);
+      ctx.stroke();
+      ctx.restore();
+    }),
+    vraag:"Welk bord is dit?",
+    correct:"Fietspad — alleen voor fietsers",
+    fout:["Voetpad","Bromfietspad","Gezamenlijk fiets- en voetpad"]
+  },
+  {
+    id:"voetgangers",
+    draw:(c,w,h)=>drawBlueCircle(c,w,h,(ctx,cx,cy,r)=>{
+      ctx.save();
+      ctx.fillStyle="#fff";
+      // Head
+      ctx.beginPath(); ctx.arc(cx, cy-32, 13, 0, Math.PI*2); ctx.fill();
+      // Body
+      ctx.beginPath();
+      ctx.moveTo(cx, cy-18);
+      ctx.lineTo(cx-16, cy+8);
+      ctx.moveTo(cx, cy-18);
+      ctx.lineTo(cx+16, cy+8);
+      ctx.moveTo(cx, cy+8);
+      ctx.lineTo(cx-14, cy+36);
+      ctx.moveTo(cx, cy+8);
+      ctx.lineTo(cx+14, cy+36);
+      ctx.moveTo(cx-10, cy-4);
+      ctx.lineTo(cx+10, cy-4);
+      ctx.strokeStyle="#fff"; ctx.lineWidth=6; ctx.stroke();
+      ctx.restore();
+    }),
+    vraag:"Wat betekent dit bord?",
+    correct:"Voetgangersoversteekplaats",
+    fout:["Schoolzone","Fietspad","Speelplaats"]
+  },
+  {
+    id:"schoolzone",
+    draw:(c,w,h)=>drawTriangle(c,w,h,"#fff","#dc2626",(ctx,cx,cy,sz)=>{
+      ctx.save();
+      // Two children silhouettes
+      ctx.fillStyle="#dc2626";
+      // Child 1
+      ctx.beginPath(); ctx.arc(cx-16, cy-22, 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(cx-20, cy-12, 8, 20);
+      ctx.fillRect(cx-22, cy+8, 6, 16);
+      ctx.fillRect(cx-14, cy+8, 6, 16);
+      // Child 2
+      ctx.beginPath(); ctx.arc(cx+16, cy-22, 9, 0, Math.PI*2); ctx.fill();
+      ctx.fillRect(cx+12, cy-12, 8, 20);
+      ctx.fillRect(cx+10, cy+8, 6, 16);
+      ctx.fillRect(cx+18, cy+8, 6, 16);
+      // Bag
+      ctx.strokeStyle="#dc2626"; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(cx+22,cy-14); ctx.lineTo(cx+32,cy-4); ctx.stroke();
+      ctx.restore();
+    }),
+    vraag:"Wat geeft dit bord aan?",
+    correct:"Schoolzone — kinderen steken over",
+    fout:["Speelplaats","Voetgangersoversteekplaats","Verboden te rijden"]
+  },
+  {
+    id:"parkeerverbod",
+    draw:(c,w,h)=>drawRedCircle(c,w,h,(ctx,cx,cy,r)=>{
+      ctx.save();
+      ctx.font="bold 58px Fredoka,sans-serif";
+      ctx.fillStyle="#1f2937";
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("P", cx, cy+4);
+      // Red slash
+      ctx.strokeStyle="#dc2626"; ctx.lineWidth=10;
+      ctx.beginPath();
+      ctx.moveTo(cx-r*0.6, cy-r*0.6);
+      ctx.lineTo(cx+r*0.6, cy+r*0.6);
+      ctx.stroke();
+      ctx.restore();
+    }),
+    vraag:"Wat mag je hier NIET?",
+    correct:"Parkeren is hier verboden",
+    fout:["Je mag niet rijden","Je moet stoppen","Je mag geen bocht maken"]
+  },
+  {
+    id:"eenrichting",
+    draw:(c,w,h)=>drawBlueRect(c,w,h,(ctx,cx,cy,rw,rh)=>{
+      drawArrow(ctx, cx, cy, 80, "#fff", "right");
+    }),
+    vraag:"Wat betekent dit bord?",
+    correct:"Eenrichtingsverkeer — alleen deze kant op",
+    fout:["Je mag niet inrijden","Hier mag je parkeren","Fietspad begint hier"]
+  }
+];
+
+// ─── SITUATIE QUESTIONS ───────────────────────────────────────────────────────
+// Top-down intersection drawings
+function drawIntersection(canvas, scenario){
+  const ctx=canvas.getContext("2d");
+  const w=canvas.width, h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const cx=w/2, cy=h/2;
+  const roadW=52, halfR=roadW/2;
+
+  // Grass background
+  ctx.fillStyle="#4ade80"; ctx.fillRect(0,0,w,h);
+  // Add some texture
+  ctx.fillStyle="rgba(0,0,0,0.04)";
+  for(let i=0;i<w;i+=20) for(let j=0;j<h;j+=20) if((i+j)%40===0) ctx.fillRect(i,j,20,20);
+
+  // Road segments (asphalt)
+  ctx.fillStyle="#374151";
+  // Horizontal road
+  ctx.fillRect(0, cy-halfR, w, roadW);
+  // Vertical road
+  ctx.fillRect(cx-halfR, 0, roadW, h);
+
+  // Center intersection box
+  ctx.fillStyle="#374151";
+  ctx.fillRect(cx-halfR, cy-halfR, roadW, roadW);
+
+  // Road markings - center dashes
+  ctx.strokeStyle="#FFC83D"; ctx.lineWidth=3; ctx.setLineDash([16,12]);
+  // Horizontal center line
+  ctx.beginPath(); ctx.moveTo(0,cy); ctx.lineTo(cx-halfR,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+halfR,cy); ctx.lineTo(w,cy); ctx.stroke();
+  // Vertical center line
+  ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,cy-halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy+halfR); ctx.lineTo(cx,h); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Edge white lines
+  ctx.strokeStyle="rgba(255,255,255,0.5)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(0,cy-halfR); ctx.lineTo(cx-halfR,cy-halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+halfR,cy-halfR); ctx.lineTo(w,cy-halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,cy+halfR); ctx.lineTo(cx-halfR,cy+halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+halfR,cy+halfR); ctx.lineTo(w,cy+halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-halfR,0); ctx.lineTo(cx-halfR,cy-halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-halfR,cy+halfR); ctx.lineTo(cx-halfR,h); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+halfR,0); ctx.lineTo(cx+halfR,cy-halfR); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx+halfR,cy+halfR); ctx.lineTo(cx+halfR,h); ctx.stroke();
+
+  // Draw scenario-specific elements
+  scenario.draw(ctx, cx, cy, halfR, w, h);
+}
+
+function drawCar(ctx, x, y, color, label, dir){
+  ctx.save();
+  ctx.translate(x, y);
+  const rot={right:0,left:Math.PI,down:Math.PI/2,up:-Math.PI/2}[dir]||0;
+  ctx.rotate(rot);
+  // Car body (pointing right)
+  const cw=28, ch=18;
+  ctx.fillStyle=color;
+  ctx.beginPath();
+  ctx.roundRect(-cw/2, -ch/2, cw, ch, 5);
+  ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,0.25)"; ctx.lineWidth=1.5; ctx.stroke();
+  // Windshield
+  ctx.fillStyle="rgba(255,255,255,0.55)";
+  ctx.fillRect(0, -ch/2+3, cw/2-4, ch-6);
+  // Wheels
+  ctx.fillStyle="#1f2937";
+  [[-cw/2+5,-ch/2],[cw/2-5,-ch/2],[-cw/2+5,ch/2],[cw/2-5,ch/2]].forEach(([wx,wy])=>{
+    ctx.beginPath(); ctx.ellipse(wx,wy,4,3,0,0,Math.PI*2); ctx.fill();
+  });
+  // Label
+  ctx.restore();
+  ctx.save();
+  ctx.font="bold 14px Fredoka,sans-serif";
+  ctx.fillStyle="#fff";
+  ctx.strokeStyle="rgba(0,0,0,0.7)"; ctx.lineWidth=3;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.strokeText(label,x,y); ctx.fillText(label,x,y);
+  ctx.restore();
+}
+
+function drawBike(ctx, x, y, label){
+  ctx.save();
+  ctx.fillStyle="#f97316";
+  ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle="#ea580c"; ctx.lineWidth=2; ctx.stroke();
+  ctx.font="12px Fredoka,sans-serif"; ctx.fillStyle="#fff";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("🚲",x,y+1);
+  ctx.restore();
+  if(label){
+    ctx.save();
+    ctx.font="bold 12px Fredoka,sans-serif"; ctx.fillStyle="#1f2937";
+    ctx.textAlign="center"; ctx.textBaseline="top";
+    ctx.fillText(label, x, y+14);
+    ctx.restore();
+  }
+}
+
+function drawPedestrian(ctx, x, y, label){
+  ctx.save();
+  ctx.fillStyle="#a78bfa";
+  ctx.beginPath(); ctx.arc(x,y,10,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle="#7c3aed"; ctx.lineWidth=2; ctx.stroke();
+  ctx.font="12px Fredoka,sans-serif"; ctx.fillStyle="#fff";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("🚶",x,y+1);
+  ctx.restore();
+}
+
+// Priority sign: yellow diamond = prioriteitsweg
+function drawPrioritySigns(ctx, cx, cy, halfR, count, positions){
+  positions.forEach(pos=>{
+    const x=pos[0], y=pos[1];
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(Math.PI/4);
+    ctx.fillStyle="#FFC83D";
+    ctx.fillRect(-9,-9,18,18);
+    ctx.strokeStyle="#b45309"; ctx.lineWidth=2; ctx.strokeRect(-9,-9,18,18);
+    ctx.restore();
+  });
+}
+
+// Voorrang verlenen marking (shark teeth / haaientanden)
+function drawSharkTeeth(ctx, x1, y1, x2, y2, dir){
+  ctx.save();
+  ctx.fillStyle="#fff";
+  const count=3;
+  for(let i=0;i<count;i++){
+    const t=i/(count-1);
+    let tx, ty, tx2, ty2;
+    if(dir==="h"){
+      tx=x1+(x2-x1)*t; ty=y1;
+      // Triangle pointing in driving direction
+      ctx.beginPath();
+      ctx.moveTo(tx-5,ty); ctx.lineTo(tx+5,ty); ctx.lineTo(tx,ty+10); ctx.closePath();
+      ctx.fill();
+    } else {
+      ty=y1+(y2-y1)*t; tx=x1;
+      ctx.beginPath();
+      ctx.moveTo(tx,ty-5); ctx.lineTo(tx,ty+5); ctx.lineTo(tx+10,ty); ctx.closePath();
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+// Direction arrow on road
+function drawRoadArrow(ctx, x, y, dir){
+  ctx.save();
+  ctx.fillStyle="rgba(255,255,255,0.7)";
+  ctx.translate(x,y);
+  const rot={right:0,left:Math.PI,down:Math.PI/2,up:-Math.PI/2}[dir]||0;
+  ctx.rotate(rot);
+  ctx.beginPath();
+  ctx.moveTo(12,0); ctx.lineTo(4,-8); ctx.lineTo(4,-2); ctx.lineTo(-12,-2); ctx.lineTo(-12,2); ctx.lineTo(4,2); ctx.lineTo(4,8);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ─── SITUATIONS ───────────────────────────────────────────────────────────────
+const SITUATIES=[
+  {
+    id:"voorrang_rechts",
+    draw:(ctx,cx,cy,halfR,w,h)=>{
+      // Two cars at intersection, car from right has priority
+      drawRoadArrow(ctx, cx-60, cy, "right");
+      drawRoadArrow(ctx, cx, cy+60, "up");
+      drawCar(ctx, cx-90, cy, "#3b82f6", "A", "right");
+      drawCar(ctx, cx, cy+90, "#16a34a", "B", "up");
+    },
+    vraag:"Auto A rijdt van links, auto B rijdt van onder. Wie heeft voorrang?",
+    correct:"Auto B — die komt van rechts",
+    fout:["Auto A — die rijdt al harder","Beide tegelijk","Wie het eerst aankomt"]
+  },
+  {
+    id:"voorrang_rechts_3",
+    draw:(ctx,cx,cy,halfR,w,h)=>{
+      drawRoadArrow(ctx, cx+60, cy, "left");
+      drawRoadArrow(ctx, cx, cy-60, "down");
+      drawCar(ctx, cx+90, cy, "#ef4444", "A", "left");
+      drawCar(ctx, cx, cy-90, "#3b82f6", "B", "down");
+    },
+    vraag:"Auto A rijdt van rechts, auto B rijdt van boven. Wie heeft voorrang?",
+    correct:"Auto A — die komt van rechts van auto B",
+    fout:["Auto B — die rijdt de hoofdweg","Allebei stoppen","Auto B want die is groter"]
+  },
+  {
+    id:"fiets_voorrang_rechts",
+    draw:(ctx,cx,cy,halfR,w,h)=>{
+      drawRoadArrow(ctx, cx-60, cy, "right");
+      drawBike(ctx, cx, cy+85, "");
+      drawCar(ctx, cx-90, cy, "#3b82f6", "A", "right");
+      ctx.save();
+      ctx.font="bold 13px Fredoka,sans-serif"; ctx.fillStyle="#fff";
+      ctx.strokeStyle="rgba(0,0,0,0.6)"; ctx.lineWidth=3;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.strokeText("Fiets",cx,cy+106); ctx.fillText("Fiets",cx,cy+106);
+      ctx.restore();
+    },
+    vraag:"Auto A rijdt van links. Een fietser komt van onder. Wie heeft voorrang?",
+    correct:"De fietser — die komt van rechts",
+    fout:["Auto A — een auto is sterker","Allebei gelijktijdig","De auto want die is op de hoofdweg"]
+  },
+  {
+    id:"zebra_voetganger",
+    draw:(ctx,cx,cy,halfR,w,h)=>{
+      // Zebra pad
+      ctx.fillStyle="#fff";
+      for(let i=0;i<4;i++){
+        ctx.fillRect(cx-halfR+2+i*14, cy+halfR, 10, 30);
+      }
+      drawCar(ctx, cx-90, cy+halfR+15, "#ef4444", "A", "right");
+      drawPedestrian(ctx, cx-10, cy+halfR+15, "");
+      ctx.save();
+      ctx.font="bold 12px Fredoka,sans-serif"; ctx.fillStyle="#1f2937";
+      ctx.textAlign="center"; ctx.textBaseline="top";
+      ctx.fillText("Voetganger",cx-10,cy+halfR+28);
+      ctx.restore();
+    },
+    vraag:"Auto A nadert het zebrapad. Een voetganger wil oversteken. Wat moet de auto doen?",
+    correct:"Stoppen — voetgangers op zebrapad hebben altijd voorrang",
+    fout:["Doorrijden want de voetganger wacht nog","Toet geven zodat de voetganger wacht","Langzaam doorrijden"]
+  },
+  {
+    id:"prioriteitsweg",
+    draw:(ctx,cx,cy,halfR,w,h)=>{
+      // Priority road diamond signs
+      drawPrioritySigns(ctx,cx,cy,halfR,2,[
+        [cx-halfR-25, cy],
+        [cx+halfR+25, cy]
+      ]);
+      // Shark teeth on side road
+      drawSharkTeeth(ctx, cx-8, cy-halfR-4, cx+8, cy-halfR-4, "h");
+      drawRoadArrow(ctx, cx-60, cy, "right");
+      drawRoadArrow(ctx, cx, cy-60, "down");
+      drawCar(ctx, cx-90, cy, "#3b82f6", "A", "right");
+      drawCar(ctx, cx, cy-90, "#ef4444", "B", "down");
+    },
+    vraag:"De ruit-tekens geven aan dat de horizontale weg een voorrangsweg is. Wie heeft voorrang?",
+    correct:"Auto A — rijdt op de voorrangsweg",
+    fout:["Auto B — die rijdt van boven","Allebei tegelijk","Rechts gaat voor, dus auto B"]
+  }
+];
+
+// ─── QUESTION BANK ────────────────────────────────────────────────────────────
+// Build 15 questions: 8 borden + 5 situaties + 2 more borden (shuffled)
+function buildQuestions(){
+  const bordVragen=shuffle([...BORDEN]).slice(0,9).map(b=>({type:"bord",data:b}));
+  const sitVragen=shuffle([...SITUATIES]).slice(0,6).map(s=>({type:"situatie",data:s}));
+  return shuffle([...bordVragen,...sitVragen]).slice(0,TOTAL);
+}
+
+function shuffle(a){ return a.map(x=>[Math.random(),x]).sort((p,q)=>p[0]-q[0]).map(p=>p[1]); }
+
+let questions=[], curQ=null;
+
+function buildLevelbar(){
+  const b=$("levelbar"); b.innerHTML="";
+  for(let i=0;i<TOTAL;i++){
+    const d=document.createElement("div");
+    d.className="dot"+(i<idx?" done":"")+(i===idx?" active":"");
+    b.appendChild(d);
+  }
+}
+
+function makeAnswers(correct, fout){
+  const all=[correct,...fout.slice(0,3)];
+  return shuffle(all);
+}
+
+function render(){
+  answered=false;
+  buildLevelbar();
+  $("feedback").textContent=""; $("feedback").className="feedback";
+  $("qnum").textContent=idx+1;
+
+  curQ=questions[idx];
+  const d=curQ.data;
+
+  if(curQ.type==="bord"){
+    $("modeBadge").textContent="Bord"; $("modeBadge").className="mode-badge borden";
+    $("signCanvas").classList.remove("hidden-el");
+    $("situatieCanvas").classList.add("hidden-el");
+    drawSign($("signCanvas"), d.draw);
+    $("qhint").textContent=d.vraag;
+    const answers=makeAnswers(d.correct, d.fout);
+    cur={correct:d.correct, answers};
+  } else {
+    $("modeBadge").textContent="Situatie"; $("modeBadge").className="mode-badge situatie";
+    $("situatieCanvas").classList.remove("hidden-el");
+    $("signCanvas").classList.add("hidden-el");
+    drawIntersection($("situatieCanvas"), d);
+    $("qhint").textContent=d.vraag;
+    const answers=makeAnswers(d.correct, d.fout);
+    cur={correct:d.correct, answers};
+  }
+
+  const o=$("opts"); o.innerHTML="";
+  cur.answers.forEach(ans=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.textContent=ans;
+    b.onclick=()=>answer(b,ans);
+    o.appendChild(b);
+  });
+}
+
+function answer(btn, val){
+  if(answered) return; answered=true;
+  const fb=$("feedback");
+  [...$("opts").children].forEach(b=>{
+    b.disabled=true;
+    if(b.textContent===cur.correct) b.classList.add("good");
+  });
+  if(val===cur.correct){
+    score++;
+    $("score").textContent=score;
+    fb.className="feedback good"; fb.textContent="✅ Goed zo!";
+  } else {
+    btn.classList.add("bad");
+    fb.className="feedback bad"; fb.textContent="❌ "+cur.correct;
+  }
+  idx++; buildLevelbar();
+  setTimeout(()=>{ if(idx>=TOTAL) endGame(); else render(); }, 1300);
+}
+
+function startGame(){
+  idx=0; score=0;
+  $("score").textContent=0;
+  $("qnum").textContent=1;
+  questions=buildQuestions();
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame(){
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+  let rec=false;
+  if(score>best){ best=score; rec=true; try{localStorage.setItem(BEST_KEY,String(best));}catch(e){} }
+  showBest();
+  $("endEmoji").textContent=score===TOTAL?"🏆":(score>=10?"🎉":"💪");
+  $("endTitle").textContent=score===TOTAL?"Verkeersexpert!":(score>=10?"Goed gedaan!":"Blijf oefenen!");
+  $("endText").innerHTML="Je had <b>"+score+" van de "+TOTAL+"</b> goed!"+(rec&&score>0?" 🏅 nieuw record!":"");
+}
+
+$("startBtn").onclick=startGame;
+$("againBtn").onclick=startGame;
+})();
+</script>
+</body>
+</html>
