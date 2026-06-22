@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woordenschat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --violet:#7c3aed;
+    --violet-dark:#5b21b6;
+    --badge-syn:#d97706;
+    --badge-ant:#0d9488;
+    --badge-cat:#e11d48;
+  }
+
+  .top{width:100%;max-width:560px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  .card{
+    background:#fff;
+    width:100%;max-width:560px;
+    border-radius:30px;
+    padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);
+    text-align:center;
+  }
+
+  h1{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:2rem;
+    color:var(--violet-dark);
+  }
+
+  .sub{
+    color:var(--ink-soft);
+    font-weight:700;
+    margin-top:4px;
+    margin-bottom:14px;
+  }
+
+  .best{
+    color:var(--violet-dark);
+    font-weight:800;
+    font-size:.9rem;
+    margin-bottom:12px;
+    min-height:1.1em;
+  }
+
+  /* Progress dots */
+  .levelbar{
+    display:flex;
+    gap:7px;
+    justify-content:center;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+  }
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--violet);transform:scale(1.3);}
+
+  /* Mode badge — colored per game type */
+  .mode-badge{
+    display:inline-block;
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:.85rem;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    color:#fff;
+    background:var(--badge-cur, var(--violet));
+    border-radius:999px;
+    padding:5px 16px;
+    margin-bottom:14px;
+    transition:background .25s;
+  }
+
+  /* The big word stamp — the visual hero */
+  .word-stamp{
+    font-family:'Fredoka',sans-serif;
+    font-weight:700;
+    font-size:clamp(2rem, 8vw, 3rem);
+    color:var(--violet-dark);
+    background:var(--surface);
+    border-radius:20px;
+    padding:18px 24px 14px;
+    margin:0 0 8px;
+    line-height:1.1;
+    border: 3px solid var(--surface2);
+    /* The aesthetic risk: a subtle letter-spacing and underline decoration
+       that makes the word feel like a printed dictionary entry */
+    letter-spacing:.03em;
+    position:relative;
+  }
+  .word-stamp::after{
+    content:'';
+    display:block;
+    width:40px;
+    height:4px;
+    border-radius:2px;
+    background:var(--violet);
+    margin:10px auto 0;
+    opacity:.5;
+  }
+
+  /* Question text below the stamp */
+  .qhint{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    color:var(--ink-soft);
+    font-size:1rem;
+    margin:0 0 16px;
+  }
+
+  /* Answer options grid */
+  .opts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+  }
+
+  .opt{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.25rem;
+    color:var(--ink);
+    background:var(--surface);
+    border:none;
+    border-radius:16px;
+    padding:16px 8px;
+    cursor:pointer;
+    box-shadow:0 5px 0 var(--surface2);
+    transition:transform .06s;
+    line-height:1.2;
+  }
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt:focus-visible{outline:3px solid var(--violet);outline-offset:2px;}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .opt:disabled{cursor:default;}
+
+  /* Categorie mode: 4 word buttons, mark odd one out */
+  .opts.cat-mode .opt{
+    font-size:1.1rem;
+    padding:14px 6px;
+  }
+
+  .feedback{
+    min-height:32px;
+    font-family:'Fredoka',sans-serif;
+    font-size:1.15rem;
+    font-weight:600;
+    margin-top:14px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  /* Start screen intro */
+  .intro-modes{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin:18px 0 22px;
+    text-align:left;
+  }
+  .intro-mode{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--surface);
+    border-radius:14px;
+    padding:10px 14px;
+  }
+  .intro-dot{
+    width:14px;height:14px;border-radius:50%;flex-shrink:0;
+  }
+  .intro-mode p{
+    font-weight:700;
+    font-size:.9rem;
+    color:var(--ink-soft);
+    margin:0;
+  }
+  .intro-mode strong{
+    display:block;
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.05rem;
+    color:var(--ink);
+  }
+
+  /* End screen */
+  #endEmoji{font-size:3.4rem;margin-bottom:4px;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill"><span class="lbl">Ronde</span><span class="val" id="roundPill">0/15</span></div>
+    <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+  </div>
+
+  <div class="card">
+    <h1>📚 Woordenschat</h1>
+    <p class="sub">Synoniemen, tegenstellingen &amp; categorieën</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <div class="intro-modes">
+        <div class="intro-mode">
+          <div class="intro-dot" style="background:var(--badge-syn)"></div>
+          <div>
+            <strong>Synoniemen</strong>
+            <p>Kies het woord met dezelfde betekenis</p>
+          </div>
+        </div>
+        <div class="intro-mode">
+          <div class="intro-dot" style="background:var(--badge-ant)"></div>
+          <div>
+            <strong>Tegenstellingen</strong>
+            <p>Kies het woord met de tegenovergestelde betekenis</p>
+          </div>
+        </div>
+        <div class="intro-mode">
+          <div class="intro-dot" style="background:var(--badge-cat)"></div>
+          <div>
+            <strong>Categorie</strong>
+            <p>Welk woord hoort NIET bij de rest?</p>
+          </div>
+        </div>
+      </div>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+      <div class="mode-badge" id="modeBadge">Synoniemen</div>
+      <div class="word-stamp" id="wordStamp">blij</div>
+      <p class="qhint" id="qhint">Kies het synoniem</p>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+  <p class="hint-foot" id="hintFoot">Lees goed — drie soorten vragen!</p>
+
+<script>
+/* ====================================================
+   WOORDENSCHAT — game data & logic
+   ==================================================== */
+
+// ---- WORD DATA ----
+// Synoniemen: { word, correct (synonym), wrong[3] }
+const SYNONIEMEN = [
+  { word:'blij',      correct:'vrolijk',    wrong:['verdrietig','boos','bang'] },
+  { word:'snel',      correct:'vlug',       wrong:['langzaam','zwaar','oud'] },
+  { word:'mooi',      correct:'prachtig',   wrong:['lelijk','klein','nat'] },
+  { word:'boos',      correct:'kwaad',      wrong:['blij','rustig','vriendelijk'] },
+  { word:'slim',      correct:'knap',       wrong:['dom','traag','zwak'] },
+  { word:'klein',     correct:'tintje',     wrong:['groot','zwaar','breed'] },
+  { word:'moe',       correct:'uitgeput',   wrong:['energiek','wakker','fit'] },
+  { word:'bang',      correct:'angstig',    wrong:['dapper','rustig','blij'] },
+  { word:'grappig',   correct:'leuk',       wrong:['saai','vervelend','stom'] },
+  { word:'hulp',      correct:'bijstand',   wrong:['tegenstand','strijd','ruzie'] },
+  { word:'kijken',    correct:'aanschouwen',wrong:['rennen','ruiken','horen'] },
+  { word:'begin',     correct:'start',      wrong:['einde','midden','pauze'] },
+  { word:'dapper',    correct:'moedig',     wrong:['laf','bang','zwak'] },
+  { word:'oud',       correct:'bejaard',    wrong:['jong','nieuw','fris'] },
+  { word:'praten',    correct:'spreken',    wrong:['schrijven','lezen','luisteren'] },
+];
+
+// Tegenstellingen: { word, correct (antonym), wrong[3] }
+const TEGENSTELLINGEN = [
+  { word:'groot',     correct:'klein',      wrong:['breed','zwaar','lang'] },
+  { word:'warm',      correct:'koud',       wrong:['nat','droog','zacht'] },
+  { word:'licht',     correct:'donker',     wrong:['zacht','stil','leeg'] },
+  { word:'snel',      correct:'langzaam',   wrong:['groot','zwaar','luid'] },
+  { word:'vrolijk',   correct:'verdrietig', wrong:['moe','boos','luid'] },
+  { word:'droog',     correct:'nat',        wrong:['koud','donker','stil'] },
+  { word:'hard',      correct:'zacht',      wrong:['snel','groot','warm'] },
+  { word:'vol',       correct:'leeg',       wrong:['lang','breed','laag'] },
+  { word:'oud',       correct:'nieuw',      wrong:['klein','stil','nat'] },
+  { word:'voor',      correct:'achter',     wrong:['links','boven','naast'] },
+  { word:'dag',       correct:'nacht',      wrong:['ochtend','week','jaar'] },
+  { word:'open',      correct:'dicht',      wrong:['breed','hoog','snel'] },
+  { word:'luid',      correct:'stil',       wrong:['koud','groot','zwaar'] },
+  { word:'sterk',     correct:'zwak',       wrong:['klein','kort','langzaam'] },
+  { word:'hoog',      correct:'laag',       wrong:['smal','kort','licht'] },
+];
+
+// Categorie: { words[4], odd (index of odd-one-out), category label }
+const CATEGORIE = [
+  { words:['appel','banaan','wortel','peer'],         odd:2, cat:'fruit' },
+  { words:['hond','kat','vlinder','konijn'],          odd:2, cat:'huisdieren' },
+  { words:['rood','blauw','cirkel','groen'],          odd:2, cat:'kleuren' },
+  { words:['tabel','stoel','bank','fiets'],           odd:3, cat:'meubels' },
+  { words:['zwemmen','fietsen','tekenen','rennen'],   odd:2, cat:'sport' },
+  { words:['piano','gitaar','trompet','telefoon'],    odd:3, cat:'instrumenten' },
+  { words:['januari','maart','zomer','oktober'],      odd:2, cat:'maanden' },
+  { words:['leeuw','tijger','olifant','mug'],         odd:3, cat:'grote dieren' },
+  { words:['auto','trein','boot','lepel'],            odd:3, cat:'vervoer' },
+  { words:['aarde','mars','maan','jupiter'],          odd:2, cat:'planeten' },
+  { words:['brood','kaas','hamer','boter'],           odd:2, cat:'eten' },
+  { words:['oog','neus','oor','schoen'],              odd:3, cat:'lichaamsdelen' },
+  { words:['oranje','paars','driehoek','geel'],       odd:2, cat:'kleuren' },
+  { words:['vliegtuig','helikopter','ballon','duikboot'], odd:3, cat:'voertuigen in de lucht' },
+  { words:['beer','wolf','vos','kip'],                odd:3, cat:'wilde dieren' },
+];
+
+/* ---- GAME STATE ---- */
+const TOTAL = 15;
+const BEST_KEY = 'woordenschat_best';
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch(e) {}
+
+let idx = 0, score = 0, answered = false, cur = null;
+
+const $ = id => document.getElementById(id);
+
+function showBest() {
+  $('best').textContent = best > 0 ? ('🏅 Beste: ' + best + ' / ' + TOTAL) : '';
+}
+showBest();
+
+/* Shuffle array (Fisher-Yates) */
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Build a sequence of 15 rounds: alternate modes evenly (5 of each) then shuffle */
+function buildSequence() {
+  const synIdxs  = shuffle([...Array(SYNONIEMEN.length).keys()]).slice(0, 5);
+  const antIdxs  = shuffle([...Array(TEGENSTELLINGEN.length).keys()]).slice(0, 5);
+  const catIdxs  = shuffle([...Array(CATEGORIE.length).keys()]).slice(0, 5);
+
+  const rounds = [
+    ...synIdxs.map(i  => ({ mode: 'syn', data: SYNONIEMEN[i] })),
+    ...antIdxs.map(i  => ({ mode: 'ant', data: TEGENSTELLINGEN[i] })),
+    ...catIdxs.map(i  => ({ mode: 'cat', data: CATEGORIE[i] })),
+  ];
+  return shuffle(rounds);
+}
+
+let sequence = [];
+
+/* ---- BUILD LEVELBAR ---- */
+function buildLevelbar() {
+  const bar = $('levelbar');
+  bar.innerHTML = '';
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < idx ? ' done' : '') + (i === idx ? ' active' : '');
+    bar.appendChild(d);
+  }
+}
+
+/* ---- RENDER QUESTION ---- */
+function render() {
+  answered = false;
+  buildLevelbar();
+  $('feedback').textContent = '';
+  $('feedback').className = 'feedback';
+  $('roundPill').textContent = (idx + 1) + '/' + TOTAL;
+
+  cur = sequence[idx];
+  const badge = $('modeBadge');
+  const stamp = $('wordStamp');
+  const hint  = $('qhint');
+  const opts  = $('opts');
+
+  opts.innerHTML = '';
+
+  if (cur.mode === 'syn') {
+    badge.textContent = '🟡 Synoniemen';
+    badge.style.setProperty('--badge-cur', 'var(--badge-syn)');
+    badge.style.background = 'var(--badge-syn)';
+
+    stamp.textContent = cur.data.word;
+    hint.textContent  = 'Kies het woord met dezelfde betekenis';
+    opts.classList.remove('cat-mode');
+
+    const choices = shuffle([cur.data.correct, ...cur.data.wrong]);
+    choices.forEach(w => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = w;
+      b.onclick = () => answer(b, w === cur.data.correct);
+      opts.appendChild(b);
+    });
+
+  } else if (cur.mode === 'ant') {
+    badge.textContent = '🟢 Tegenstellingen';
+    badge.style.background = 'var(--badge-ant)';
+
+    stamp.textContent = cur.data.word;
+    hint.textContent  = 'Kies het woord met de tegenovergestelde betekenis';
+    opts.classList.remove('cat-mode');
+
+    const choices = shuffle([cur.data.correct, ...cur.data.wrong]);
+    choices.forEach(w => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = w;
+      b.onclick = () => answer(b, w === cur.data.correct);
+      opts.appendChild(b);
+    });
+
+  } else {
+    // CATEGORIE
+    badge.textContent = '🔴 Categorie';
+    badge.style.background = 'var(--badge-cat)';
+
+    stamp.textContent = 'Welk woord hoort NIET bij de rest?';
+    hint.textContent  = 'Drie woorden horen bij één groep — eén niet';
+    opts.classList.add('cat-mode');
+
+    // Shuffle the four words but remember which is odd
+    const paired = cur.data.words.map((w, i) => ({ w, isOdd: i === cur.data.odd }));
+    const shuffled = shuffle(paired);
+    shuffled.forEach(({ w, isOdd }) => {
+      const b = document.createElement('button');
+      b.className = 'opt';
+      b.textContent = w;
+      b.onclick = () => answer(b, isOdd);
+      opts.appendChild(b);
+    });
+  }
+}
+
+/* ---- ANSWER ---- */
+function answer(btn, isCorrect) {
+  if (answered) return;
+  answered = true;
+  const fb = $('feedback');
+
+  // Disable all options
+  [...$('opts').children].forEach(b => { b.disabled = true; });
+
+  if (isCorrect) {
+    score++;
+    $('score').textContent = score;
+    btn.classList.add('good');
+    fb.className = 'feedback good';
+
+    if (cur.mode === 'syn')      fb.textContent = '✅ Goed! "' + btn.textContent + '" betekent hetzelfde.';
+    else if (cur.mode === 'ant') fb.textContent = '✅ Goed! "' + btn.textContent + '" is het tegendeel.';
+    else                         fb.textContent = '✅ Goed! "' + btn.textContent + '" hoort er niet bij.';
+  } else {
+    btn.classList.add('bad');
+    fb.className = 'feedback bad';
+
+    if (cur.mode === 'syn') {
+      // Highlight correct answer
+      [...$('opts').children].forEach(b => {
+        if (b.textContent === cur.data.correct) b.classList.add('good');
+      });
+      fb.textContent = '❌ Het synoniem was: ' + cur.data.correct;
+    } else if (cur.mode === 'ant') {
+      [...$('opts').children].forEach(b => {
+        if (b.textContent === cur.data.correct) b.classList.add('good');
+      });
+      fb.textContent = '❌ De tegenstelling was: ' + cur.data.correct;
+    } else {
+      // Highlight the odd one out
+      [...$('opts').children].forEach(b => {
+        if (b.textContent === cur.data.words[cur.data.odd]) b.classList.add('good');
+      });
+      fb.textContent = '❌ "' + cur.data.words[cur.data.odd] + '" hoort er niet bij.';
+    }
+  }
+
+  idx++;
+  buildLevelbar();
+  setTimeout(() => {
+    if (idx >= TOTAL) endGame();
+    else render();
+  }, 1300);
+}
+
+/* ---- START / END ---- */
+function startGame() {
+  idx = 0; score = 0;
+  $('score').textContent = 0;
+  sequence = buildSequence();
+  $('startScreen').classList.add('hidden-el');
+  $('endScreen').classList.add('hidden-el');
+  $('playScreen').classList.remove('hidden-el');
+  $('hintFoot').style.display = 'none';
+  render();
+}
+
+function endGame() {
+  $('playScreen').classList.add('hidden-el');
+  $('endScreen').classList.remove('hidden-el');
+  let rec = false;
+  if (score > best) {
+    best = score;
+    rec = true;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+  }
+  showBest();
+  $('endEmoji').textContent  = score === TOTAL ? '🏆' : (score >= 10 ? '🎉' : score >= 7 ? '👍' : '💪');
+  $('endTitle').textContent  = score === TOTAL ? 'Woordmeester!' : (score >= 10 ? 'Geweldig!' : score >= 7 ? 'Goed gedaan!' : 'Blijf oefenen!');
+  $('endText').innerHTML     = 'Je had <b>' + score + ' van de ' + TOTAL + '</b> goed!' + (rec && score > 0 ? ' 🏅 Nieuw record!' : '');
+  $('roundPill').textContent = TOTAL + '/' + TOTAL;
+}
+
+$('startBtn').onclick = startGame;
+$('againBtn').onclick = startGame;
+</script>
+</body>
+</html>

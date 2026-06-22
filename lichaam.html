@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Menselijk Lichaam</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --violet:#f43f5e;
+    --violet-dark:#c4183c;
+    --accent:#f43f5e;
+    --accent-dark:#c4183c;
+    --accent-glow:rgba(244,63,94,.22);
+  }
+
+  .top{width:100%;max-width:560px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  .card{
+    background:#fff;
+    width:100%;max-width:560px;
+    border-radius:30px;
+    padding:22px 20px 28px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);
+    text-align:center;
+  }
+
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--accent-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:12px;}
+  .best{color:var(--accent-dark);font-weight:800;font-size:.9rem;margin-bottom:10px;min-height:1.1em;}
+
+  .levelbar{display:flex;gap:6px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+  .dot{width:11px;height:11px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--accent);transform:scale(1.35);}
+
+  /* Canvas area */
+  .body-stage{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    margin:0 auto 10px;
+  }
+  #bodyCanvas{
+    display:block;
+    border-radius:20px;
+  }
+
+  /* Question label above canvas */
+  .question-label{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.1rem;
+    color:var(--ink);
+    margin-bottom:8px;
+    min-height:1.4em;
+  }
+
+  /* Answer buttons */
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .opt{
+    font-family:'Fredoka',sans-serif;
+    font-weight:600;
+    font-size:1.25rem;
+    color:var(--ink);
+    background:var(--surface);
+    border:none;
+    border-radius:16px;
+    padding:14px 6px;
+    cursor:pointer;
+    box-shadow:0 5px 0 var(--surface2);
+    transition:transform .06s;
+    text-transform:capitalize;
+  }
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad{background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .opt:disabled{cursor:default;}
+
+  /* Fun fact panel */
+  .funfact{
+    margin-top:12px;
+    background:linear-gradient(135deg,#fff0f3,#ffe4ea);
+    border-radius:16px;
+    padding:12px 14px;
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
+    font-size:.9rem;
+    color:var(--accent-dark);
+    min-height:38px;
+    text-align:left;
+    border-left:4px solid var(--accent);
+    display:none;
+    line-height:1.45;
+  }
+  .funfact.visible{display:block;}
+  .funfact .ft-emoji{font-size:1.2rem;margin-right:5px;}
+
+  .feedback{
+    min-height:28px;
+    font-family:'Fredoka',sans-serif;
+    font-size:1.15rem;
+    font-weight:600;
+    margin-top:8px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad{color:var(--bad);}
+
+  /* Start / End screen styles */
+  .start-body-preview{
+    font-size:3.8rem;
+    margin:10px 0 6px;
+  }
+  .start-desc{
+    font-family:'Nunito',sans-serif;
+    font-weight:700;
+    color:var(--ink-soft);
+    font-size:.95rem;
+    margin-bottom:18px;
+    line-height:1.5;
+  }
+
+  .hint-foot{
+    font-family:'Nunito',sans-serif;
+    font-size:.82rem;
+    color:var(--ink-soft);
+    margin-top:14px;
+    font-weight:600;
+  }
+
+  /* End screen */
+  #endScreen .end-emoji{font-size:3.2rem;margin-bottom:4px;}
+  #endScreen h1{margin-bottom:4px;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill"><span class="lbl">Ronde</span><span class="val" id="roundPill">0/15</span></div>
+    <div class="pill"><span class="lbl">Goed</span><span class="val" id="score">0</span></div>
+  </div>
+
+  <div class="card">
+    <h1>🫀 Menselijk Lichaam</h1>
+    <p class="sub">Wijs het juiste lichaamsdeel aan!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <div class="start-body-preview">🫀🧠🦷</div>
+      <p class="start-desc">
+        Weet jij waar alles zit in jouw lichaam?<br>
+        Raad het lichaamsdeel dat oplicht — 15 vragen!
+      </p>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+      <p class="hint-foot">Tip: kijk goed naar het pijltje op het plaatje!</p>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+      <div class="question-label" id="questionLabel">Welk lichaamsdeel wordt aangewezen?</div>
+      <div class="body-stage">
+        <canvas id="bodyCanvas" width="320" height="380" aria-label="Menselijk lichaam met gemarkeerd lichaamsdeel"></canvas>
+      </div>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback"></div>
+      <div class="funfact" id="funfact"><span class="ft-emoji">💡</span><span id="funfactText"></span></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div class="end-emoji" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+(function(){
+"use strict";
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+
+const TOTAL = 15;
+const BEST_KEY = "lichaam_best";
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY)||"0",10)||0; } catch(e){}
+
+// Each body part: name, canvas coords (cx,cy) = center of highlight dot,
+// arrow source (ax,ay) = tip of arrow, body region for grouping,
+// and a fun fact in Dutch for children.
+const PARTS = [
+  {
+    id:"hoofd",     label:"hoofd",
+    cx:160, cy:54,  // center of head
+    region:"hoofd",
+    fact:"Je hoofd beschermt je hersenen. Een volwassen hoofd weegt maar liefst 5 kilo — net zo zwaar als een watermeloen!"
+  },
+  {
+    id:"ogen",      label:"ogen",
+    cx:160, cy:47,
+    region:"hoofd",
+    fact:"Je ogen kunnen meer dan 10 miljoen kleuren zien! Ze bewegen elke dag meer dan 100.000 keer."
+  },
+  {
+    id:"oren",      label:"oren",
+    cx:160, cy:52,
+    region:"hoofd",
+    fact:"Je oren horen nooit op — zelfs als je slaapt! Je oren groeien ook je hele leven door."
+  },
+  {
+    id:"neus",      label:"neus",
+    cx:160, cy:55,
+    region:"hoofd",
+    fact:"Je neus kan meer dan 1 biljoen verschillende geuren ruiken. En je niest altijd met je ogen dicht!"
+  },
+  {
+    id:"mond",      label:"mond",
+    cx:160, cy:62,
+    region:"hoofd",
+    fact:"Met je mond smaak je, praat je en adem je. Je maakt elke dag ruim een liter speeksel aan — een volle fles!"
+  },
+  {
+    id:"tanden",    label:"tanden",
+    cx:160, cy:64,
+    region:"hoofd",
+    fact:"Je hebt twee sets tanden: eerst 20 melktanden, daarna 32 blijvende tanden. Tanden zijn net zo uniek als vingerafdrukken!"
+  },
+  {
+    id:"nek",       label:"nek",
+    cx:160, cy:84,
+    region:"torso",
+    fact:"Je nek heeft 7 kleine botjes, net zoals een giraf. Die botjes heten wervels. De nek draagt je hele hoofd!"
+  },
+  {
+    id:"schouders", label:"schouders",
+    cx:160, cy:104,
+    region:"torso",
+    fact:"Je schouders zijn het meest beweeglijke gewricht van je lichaam. Je kunt je arm in bijna elke richting draaien!"
+  },
+  {
+    id:"armen",     label:"armen",
+    cx:160, cy:145,
+    region:"armen",
+    fact:"Elke arm heeft 3 botten. De botten in je armen en benen zijn hol van binnen — zo zijn ze licht maar ook heel sterk!"
+  },
+  {
+    id:"handen",    label:"handen",
+    cx:160, cy:196,
+    region:"handen",
+    fact:"Eén hand heeft 27 botjes! Meer dan een kwart van alle botten in je lichaam zitten in je handen en voeten."
+  },
+  {
+    id:"vingers",   label:"vingers",
+    cx:160, cy:208,
+    region:"handen",
+    fact:"Je vingertoppen zijn heel gevoelig — er zitten wel 2.500 zenuwuiteinden in elke vingertopp. Nagels groeien elke maand 3 millimeter."
+  },
+  {
+    id:"buik",      label:"buik",
+    cx:160, cy:188,
+    region:"torso",
+    fact:"In je buik zitten maag, darmen en andere organen. Je darmen zijn uitgestrekt ruim 7 meter lang — net een lang stuk touw!"
+  },
+  {
+    id:"rug",       label:"rug",
+    cx:160, cy:160,
+    region:"rug",
+    fact:"Je ruggengraat bestaat uit 33 kleine botjes. Hij houdt je rechtop en beschermt het ruggenmerg, de snelweg van je zenuwen."
+  },
+  {
+    id:"benen",     label:"benen",
+    cx:160, cy:255,
+    region:"benen",
+    fact:"Het dijbeen in je been is het sterkste bot van je lichaam. Het kan krachten van meer dan 1.000 kilo aan zonder te breken!"
+  },
+  {
+    id:"knieën",    label:"knieën",
+    cx:160, cy:277,
+    region:"benen",
+    fact:"De knie is het grootste gewricht van je lichaam. Er zit een schuifje in: de knieschijf. Die beschermt het gewricht."
+  },
+  {
+    id:"voeten",    label:"voeten",
+    cx:160, cy:340,
+    region:"voeten",
+    fact:"Eén voet heeft 26 botjes! Elke dag loop je gemiddeld 8.000 stappen. Op een jaar is dat genoeg om de halve wereld te omronden!"
+  },
+  {
+    id:"hart",      label:"hart",
+    cx:160, cy:138,
+    region:"organen",
+    fact:"Je hart klopt zo'n 100.000 keer per dag! In je hele leven pompt het hart genoeg bloed om 3 olympische zwembaden te vullen."
+  },
+  {
+    id:"longen",    label:"longen",
+    cx:160, cy:130,
+    region:"organen",
+    fact:"Je longen ademen elke dag zo'n 11.000 liter lucht in en uit. Uitgespreid zijn al je longblaasjes zo groot als een tennisbaan!"
+  },
+  {
+    id:"hersenen",  label:"hersenen",
+    cx:160, cy:46,
+    region:"organen",
+    fact:"Je hersenen wegen slechts 1,4 kilo maar gebruiken 20% van al je energie. Er zitten 86 miljard zenuwcellen in — meer dan sterren in de Melkweg!"
+  },
+  {
+    id:"maag",      label:"maag",
+    cx:160, cy:170,
+    region:"organen",
+    fact:"Je maag kan uitrekken tot wel 4 liter. Het maagsap is zo zuur dat het metaal kan oplossen — maar je maagwand vernieuwt zichzelf elke 3 dagen!"
+  }
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let idx = 0, score = 0, cur = null, answered = false;
+let glowPhase = 0, glowAnim = null;
+const $ = id => document.getElementById(id);
+
+function showBest(){
+  $("best").textContent = best > 0 ? ("🏅 Beste: "+best+" / "+TOTAL) : "";
+}
+showBest();
+
+// ─── CANVAS DRAWING ──────────────────────────────────────────────────────────
+
+const canvas = $("bodyCanvas");
+const ctx = canvas.getContext("2d");
+
+// Responsive canvas: scale to fit card width
+function resizeCanvas(){
+  const maxW = Math.min(canvas.parentElement.clientWidth || 320, 320);
+  canvas.style.width  = maxW + "px";
+  canvas.style.height = Math.round(maxW * 380/320) + "px";
+}
+resizeCanvas();
+window.addEventListener("resize", ()=>{ resizeCanvas(); if(cur) drawBody(cur, glowPhase); });
+
+// Color palette for the figure
+const SKIN      = "#FDDCB4";
+const SKIN_DARK = "#E8B884";
+const HAIR      = "#5C3D1E";
+const SHIRT     = "#ffd6dc";  // rose tint
+const PANTS     = "#93c5fd";  // soft blue
+const SHOE      = "#475569";
+const ORGAN_HEART  = "#f43f5e";
+const ORGAN_LUNG   = "#fb7185";
+const ORGAN_BRAIN  = "#c084fc";
+const ORGAN_STOMACH= "#86efac";
+
+// Compute scale from logical 320x380 to actual canvas pixels
+function getScale(){ return canvas.width / 320; }
+
+function drawBody(part, glow){
+  const s = getScale();
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.scale(s,s);
+
+  // ── background ──
+  ctx.fillStyle="#FFF8F9";
+  roundRect(ctx, 4,4, 312,372, 18, true, false);
+
+  // Subtle grid lines
+  ctx.strokeStyle="rgba(244,63,94,.06)";
+  ctx.lineWidth=1;
+  for(let x=20;x<320;x+=28){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,380);ctx.stroke(); }
+  for(let y=20;y<380;y+=28){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(320,y);ctx.stroke(); }
+
+  // ── LEGS ──
+  // Left leg
+  ctx.fillStyle=PANTS;
+  ctx.beginPath(); ctx.roundRect(134,210,26,90,8); ctx.fill();
+  // Right leg
+  ctx.beginPath(); ctx.roundRect(160,210,26,90,8); ctx.fill();
+
+  // Knee caps
+  ctx.fillStyle="#bfdbfe";
+  ctx.beginPath(); ctx.arc(147,278,10,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(173,278,10,0,Math.PI*2); ctx.fill();
+
+  // ── FEET / SHOES ──
+  ctx.fillStyle=SHOE;
+  // left shoe
+  ctx.beginPath(); ctx.roundRect(128,296,34,18,7); ctx.fill();
+  // right shoe
+  ctx.beginPath(); ctx.roundRect(158,296,34,18,7); ctx.fill();
+  // toe highlight
+  ctx.fillStyle="#64748b";
+  ctx.beginPath(); ctx.roundRect(128,296,14,8,4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(158,296,14,8,4); ctx.fill();
+
+  // ── TORSO ──
+  ctx.fillStyle=SHIRT;
+  ctx.beginPath(); ctx.roundRect(120,105,80,110,14); ctx.fill();
+  // shirt detail — collar
+  ctx.fillStyle="#fecdd3";
+  ctx.beginPath();
+  ctx.moveTo(152,106); ctx.lineTo(160,120); ctx.lineTo(168,106);
+  ctx.closePath(); ctx.fill();
+
+  // ── ORGANS (visible through torso, always drawn) ──
+  // Lungs (two lobes)
+  ctx.globalAlpha = 0.45;
+  ctx.fillStyle = ORGAN_LUNG;
+  ctx.beginPath(); ctx.ellipse(144,135,12,20,-.15,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(176,135,12,20,.15,0,Math.PI*2); ctx.fill();
+  // Heart
+  ctx.fillStyle = ORGAN_HEART;
+  drawHeart(ctx, 155,147, 10);
+  // Stomach
+  ctx.fillStyle = ORGAN_STOMACH;
+  ctx.beginPath(); ctx.ellipse(161,176,14,12,0,0,Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // ── ARMS ──
+  // Left arm
+  ctx.fillStyle=SKIN;
+  ctx.beginPath(); ctx.roundRect(98,105,25,90,12); ctx.fill();
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(98,105,25,90,12); ctx.stroke();
+
+  // Right arm
+  ctx.fillStyle=SKIN;
+  ctx.beginPath(); ctx.roundRect(197,105,25,90,12); ctx.fill();
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.roundRect(197,105,25,90,12); ctx.stroke();
+
+  // ── HANDS ──
+  ctx.fillStyle=SKIN;
+  // Left hand
+  ctx.beginPath(); ctx.roundRect(95,193,30,18,8); ctx.fill();
+  // fingers left
+  for(let f=0;f<5;f++){
+    ctx.beginPath(); ctx.roundRect(96+f*5,188,4,12,3); ctx.fill();
+  }
+  // Right hand
+  ctx.beginPath(); ctx.roundRect(195,193,30,18,8); ctx.fill();
+  for(let f=0;f<5;f++){
+    ctx.beginPath(); ctx.roundRect(196+f*5,188,4,12,3); ctx.fill();
+  }
+
+  // ── NECK ──
+  ctx.fillStyle=SKIN;
+  ctx.beginPath(); ctx.roundRect(150,76,20,32,6); ctx.fill();
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(150,76,20,32,6); ctx.stroke();
+
+  // ── HEAD ──
+  ctx.fillStyle=SKIN;
+  ctx.beginPath(); ctx.ellipse(160,52,34,38,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.ellipse(160,52,34,38,0,0,Math.PI*2); ctx.stroke();
+
+  // Hair
+  ctx.fillStyle=HAIR;
+  ctx.beginPath(); ctx.ellipse(160,24,32,18,0,Math.PI,Math.PI*2); ctx.fill();
+  // Side hair tufts
+  ctx.beginPath(); ctx.arc(128,44,10,Math.PI*.5,Math.PI*1.5,false); ctx.fill();
+  ctx.beginPath(); ctx.arc(192,44,10,Math.PI*1.5,Math.PI*.5,false); ctx.fill();
+
+  // Ears
+  ctx.fillStyle=SKIN;
+  ctx.beginPath(); ctx.ellipse(126,52,7,10,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1;
+  ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(194,52,7,10,0,0,Math.PI*2); ctx.fill();
+  ctx.stroke();
+
+  // Eyes
+  // whites
+  ctx.fillStyle="#fff";
+  ctx.beginPath(); ctx.ellipse(150,48,8,6,-.1,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(170,48,8,6,.1,0,Math.PI*2); ctx.fill();
+  // pupils
+  ctx.fillStyle="#2B2D6B";
+  ctx.beginPath(); ctx.arc(151,48,3.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(170,48,3.5,0,Math.PI*2); ctx.fill();
+  // eye shine
+  ctx.fillStyle="#fff";
+  ctx.beginPath(); ctx.arc(152.5,46.5,1.2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(171.5,46.5,1.2,0,Math.PI*2); ctx.fill();
+  // eyebrows
+  ctx.strokeStyle=HAIR; ctx.lineWidth=2.5; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(143,41); ctx.quadraticCurveTo(151,38,158,41); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(162,41); ctx.quadraticCurveTo(169,38,177,41); ctx.stroke();
+
+  // Nose
+  ctx.strokeStyle=SKIN_DARK; ctx.lineWidth=1.5; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(157,52); ctx.quadraticCurveTo(154,62,159,64); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(163,52); ctx.quadraticCurveTo(166,62,161,64); ctx.stroke();
+  // nostril dots
+  ctx.fillStyle=SKIN_DARK;
+  ctx.beginPath(); ctx.arc(158,65,2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(162,65,2,0,Math.PI*2); ctx.fill();
+
+  // Mouth
+  ctx.strokeStyle="#c0687a"; ctx.lineWidth=2; ctx.lineCap="round";
+  ctx.beginPath(); ctx.moveTo(152,70); ctx.quadraticCurveTo(160,77,168,70); ctx.stroke();
+  // Teeth peek
+  ctx.fillStyle="#fff";
+  ctx.beginPath(); ctx.roundRect(154,70,12,5,2); ctx.fill();
+
+  // Shirt buttons
+  ctx.fillStyle="#fca5a5";
+  for(let b=0;b<3;b++){
+    ctx.beginPath(); ctx.arc(160,125+b*14,3,0,Math.PI*2); ctx.fill();
+  }
+
+  // ── HIGHLIGHT the active body part ──
+  drawHighlight(ctx, part, glow);
+
+  ctx.restore();
+}
+
+// Map body part ids to the exact pixel regions to highlight
+function getHighlightConfig(partId){
+  // Returns {type, coords} where type is 'ellipse', 'rect', 'hearShape', 'pairEllipse'
+  const configs = {
+    hoofd:      {type:"ellipse",  x:160,  y:52,   rx:38,  ry:42},
+    ogen:       {type:"pair",     x1:150, y1:48, x2:170, y2:48, rx:11, ry:8},
+    oren:       {type:"pair",     x1:126, y1:52, x2:194, y2:52, rx:11, ry:14},
+    neus:       {type:"ellipse",  x:160,  y:60,   rx:10,  ry:9},
+    mond:       {type:"ellipse",  x:160,  y:72,   rx:14,  ry:8},
+    tanden:     {type:"rect",     x:154,  y:68,   w:12,   h:7,   r:3},
+    nek:        {type:"rect",     x:150,  y:76,   w:20,   h:32,  r:7},
+    schouders:  {type:"pair",     x1:111, y1:108, x2:209, y2:108, rx:18, ry:12},
+    armen:      {type:"pair",     x1:110, y1:148, x2:210, y2:148, rx:16, ry:38},
+    handen:     {type:"pair",     x1:110, y1:200, x2:210, y2:200, rx:18, ry:11},
+    vingers:    {type:"pair",     x1:110, y1:192, x2:210, y2:192, rx:16, ry:14},
+    buik:       {type:"ellipse",  x:160,  y:178,  rx:36,  ry:28},
+    rug:        {type:"rect",     x:120,  y:112,  w:80,   h:100, r:14},
+    benen:      {type:"pair",     x1:147, y1:250, x2:173, y2:250, rx:16, ry:40},
+    knieën:     {type:"pair",     x1:147, y1:278, x2:173, y2:278, rx:13, ry:13},
+    voeten:     {type:"pair",     x1:145, y1:302, x2:175, y2:302, rx:18, ry:11},
+    hart:       {type:"heart",    x:155,  y:147,  r:16},
+    longen:     {type:"pair",     x1:144, y1:135, x2:176, y2:135, rx:16, ry:24},
+    hersenen:   {type:"ellipse",  x:160,  y:38,   rx:28,  ry:20},
+    maag:       {type:"ellipse",  x:161,  y:176,  rx:20,  ry:16},
+  };
+  return configs[partId] || {type:"ellipse", x:160, y:160, rx:20, ry:20};
+}
+
+function drawHighlight(ctx, part, glow){
+  if(!part) return;
+  const cfg = getHighlightConfig(part.id);
+  const alpha = 0.25 + 0.22 * Math.sin(glow);
+  const radius = 1 + 0.12 * Math.sin(glow);
+
+  ctx.save();
+
+  function glowRegion(cx, cy, rx, ry){
+    // Outer glow
+    const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,Math.max(rx,ry)*2.2*radius);
+    grad.addColorStop(0,  `rgba(244,63,94,${alpha+0.15})`);
+    grad.addColorStop(0.5,`rgba(244,63,94,${alpha})`);
+    grad.addColorStop(1,  "rgba(244,63,94,0)");
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.ellipse(cx,cy,Math.max(rx,ry)*2.2*radius,Math.max(rx,ry)*2.2*radius,0,0,Math.PI*2); ctx.fill();
+
+    // Highlight ring
+    ctx.strokeStyle=`rgba(244,63,94,${0.7+0.3*Math.sin(glow)})`;
+    ctx.lineWidth=3*radius;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.ellipse(cx,cy,rx*radius,ry*radius,0,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  if(cfg.type==="ellipse"){
+    glowRegion(cfg.x,cfg.y,cfg.rx,cfg.ry);
+    drawArrow(ctx, cfg.x, cfg.y, cfg.rx, cfg.ry, glow);
+  } else if(cfg.type==="rect"){
+    const cx=cfg.x+cfg.w/2, cy=cfg.y+cfg.h/2;
+    const rr=Math.max(cfg.w,cfg.h)/2;
+    glowRegion(cx,cy,rr,rr);
+    drawArrow(ctx, cx, cy, rr, rr, glow);
+  } else if(cfg.type==="pair"){
+    glowRegion(cfg.x1,cfg.y1,cfg.rx,cfg.ry);
+    glowRegion(cfg.x2,cfg.y2,cfg.rx,cfg.ry);
+    // Arrow to right one
+    drawArrow(ctx, cfg.x2, cfg.y2, cfg.rx, cfg.ry, glow);
+  } else if(cfg.type==="heart"){
+    glowRegion(cfg.x,cfg.y,cfg.r,cfg.r);
+    drawArrow(ctx, cfg.x,cfg.y,cfg.r,cfg.r,glow);
+  }
+
+  ctx.restore();
+}
+
+function drawArrow(ctx, cx, cy, rx, ry, glow){
+  // Arrow comes from outside-right of the figure
+  const arrowX = 298;
+  const arrowY = cy;
+  const tipX   = cx + rx * 1.1;
+  const tipY   = cy;
+  const pulse  = 1 + 0.06*Math.sin(glow*2);
+
+  ctx.save();
+  ctx.strokeStyle=`rgba(244,63,94,${0.85+0.15*Math.sin(glow)})`;
+  ctx.fillStyle=`rgba(244,63,94,${0.85+0.15*Math.sin(glow)})`;
+  ctx.lineWidth=3*pulse;
+  ctx.lineCap="round";
+  ctx.lineJoin="round";
+  ctx.setLineDash([7,5]);
+  ctx.beginPath();
+  ctx.moveTo(arrowX, arrowY);
+  ctx.lineTo(tipX+14, tipY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(tipX,tipY);
+  ctx.lineTo(tipX+12,tipY-6);
+  ctx.lineTo(tipX+12,tipY+6);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dot at arrow origin
+  ctx.beginPath();
+  ctx.arc(arrowX,arrowY,4*pulse,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHeart(ctx, cx, cy, r){
+  ctx.beginPath();
+  ctx.moveTo(cx, cy+r*0.4);
+  ctx.bezierCurveTo(cx, cy-r*0.4, cx-r*1.2, cy-r*0.4, cx-r*0.6, cy-r*0.1);
+  ctx.bezierCurveTo(cx-r*1.2, cy-r*0.8, cx-r*1.2, cy+r*0.4, cx, cy+r*0.9);
+  ctx.bezierCurveTo(cx+r*1.2, cy+r*0.4, cx+r*1.2, cy-r*0.8, cx+r*0.6, cy-r*0.1);
+  ctx.bezierCurveTo(cx+r*1.2, cy-r*0.4, cx, cy-r*0.4, cx, cy+r*0.4);
+  ctx.fill();
+}
+
+function roundRect(ctx, x,y,w,h,r,fill,stroke){
+  ctx.beginPath();
+  ctx.roundRect(x,y,w,h,r);
+  if(fill) ctx.fill();
+  if(stroke) ctx.stroke();
+}
+
+// ─── ANIMATION LOOP ──────────────────────────────────────────────────────────
+
+function startGlow(){
+  stopGlow();
+  let start=null;
+  function frame(ts){
+    if(!start) start=ts;
+    glowPhase = (ts-start)/400; // radians per ~400ms cycle
+    if(cur) drawBody(cur, glowPhase);
+    glowAnim = requestAnimationFrame(frame);
+  }
+  glowAnim = requestAnimationFrame(frame);
+}
+function stopGlow(){
+  if(glowAnim){ cancelAnimationFrame(glowAnim); glowAnim=null; }
+}
+
+// ─── GAME LOGIC ──────────────────────────────────────────────────────────────
+
+function shuffle(arr){ return arr.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]); }
+
+const usedIndices = new Set();
+
+function pickPart(){
+  // Pick a random part not yet used this game
+  const available = PARTS.filter((_,i) => !usedIndices.has(i));
+  if(!available.length){ usedIndices.clear(); return PARTS[Math.floor(Math.random()*PARTS.length)]; }
+  const chosen = available[Math.floor(Math.random()*available.length)];
+  usedIndices.add(PARTS.indexOf(chosen));
+  return chosen;
+}
+
+function makeWrongOptions(correct){
+  const pool = PARTS.filter(p=>p.id!==correct.id);
+  return shuffle(pool).slice(0,3);
+}
+
+function buildLevelbar(){
+  const b=$("levelbar"); b.innerHTML="";
+  for(let i=0;i<TOTAL;i++){
+    const d=document.createElement("div");
+    d.className="dot"+(i<idx?" done":"")+(i===idx?" active":"");
+    b.appendChild(d);
+  }
+}
+
+function render(){
+  answered=false;
+  buildLevelbar();
+  $("feedback").textContent=""; $("feedback").className="feedback";
+  $("funfact").classList.remove("visible");
+
+  cur = pickPart();
+  const wrongs = makeWrongOptions(cur);
+  const allOpts = shuffle([cur, ...wrongs]);
+
+  $("questionLabel").textContent="Welk lichaamsdeel wordt aangewezen?";
+
+  const o=$("opts"); o.innerHTML="";
+  allOpts.forEach(part=>{
+    const b=document.createElement("button");
+    b.className="opt";
+    b.textContent=part.label;
+    b.onclick=()=>answer(b,part);
+    o.appendChild(b);
+  });
+
+  startGlow();
+}
+
+function answer(btn, chosen){
+  if(answered) return;
+  answered=true;
+  stopGlow();
+
+  // Draw final frozen glow
+  drawBody(cur, glowPhase);
+
+  const fb=$("feedback");
+  [...$("opts").children].forEach(b=>{
+    b.disabled=true;
+    if(b.textContent===cur.label) b.classList.add("good");
+  });
+
+  if(chosen.id===cur.id){
+    score++; $("score").textContent=score;
+    btn.classList.add("good");
+    fb.className="feedback good"; fb.textContent="Heel goed! ✅";
+  } else {
+    btn.classList.add("bad");
+    fb.className="feedback bad"; fb.textContent="Bijna! Het was: "+cur.label+" ❌";
+  }
+
+  // Show fun fact
+  $("funfactText").textContent = cur.fact;
+  $("funfact").classList.add("visible");
+
+  idx++;
+  buildLevelbar();
+  $("roundPill").textContent = idx+"/"+TOTAL;
+
+  setTimeout(()=>{
+    if(idx>=TOTAL) endGame(); else render();
+  }, 2600);
+}
+
+function startGame(){
+  idx=0; score=0; usedIndices.clear();
+  $("score").textContent=0;
+  $("roundPill").textContent="0/"+TOTAL;
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame(){
+  stopGlow();
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+  let rec=false;
+  if(score>best){ best=score; rec=true; try{ localStorage.setItem(BEST_KEY,String(best)); }catch(e){} }
+  showBest();
+  $("endEmoji").textContent = score===TOTAL?"🏆":(score>=10?"🎉":"💪");
+  $("endTitle").textContent = score===TOTAL?"Lichaamskenner!":(score>=10?"Goed gedaan!":"Blijf oefenen!");
+  $("endText").innerHTML = "Je had <b>"+score+" van de "+TOTAL+"</b> goed!"+(rec&&score>0?" 🏅 record!":"");
+}
+
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+
+})();
+</script>
+</body>
+</html>

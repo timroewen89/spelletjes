@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gezond Eten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+:root{
+  --violet:#22c55e;
+  --violet-dark:#16a34a;
+  --maxw:620px;
+  --g-granen:#f59e0b;
+  --g-granen-dk:#b45309;
+  --g-eiwitten:#ef4444;
+  --g-eiwitten-dk:#b91c1c;
+  --g-groente:#22c55e;
+  --g-groente-dk:#15803d;
+  --g-zuivel:#3b82f6;
+  --g-zuivel-dk:#1d4ed8;
+  --g-soms:#a855f7;
+  --g-soms-dk:#7e22ce;
+}
+
+/* ── Card ── */
+.card{
+  background:#fff;
+  width:100%;
+  max-width:var(--maxw);
+  border-radius:30px;
+  padding:22px 20px 28px;
+  box-shadow:0 18px 40px rgba(43,45,107,.12);
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+
+/* ── Headings ── */
+h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+.sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+.best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:10px;min-height:1.1em;}
+
+/* ── Level dots ── */
+.levelbar{display:flex;gap:5px;justify-content:center;margin-bottom:14px;flex-wrap:wrap;}
+.dot{width:11px;height:11px;border-radius:50%;background:var(--surface2);transition:background .2s,transform .15s;}
+.dot.done{background:var(--violet);}
+.dot.active{background:var(--violet);transform:scale(1.35);}
+
+/* ── Food display ── */
+.food-stage{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  min-height:130px;
+  margin-bottom:10px;
+}
+/* Spotlight glow disc behind each food — colour-coded by group,
+   pulses once on arrival. The one deliberate aesthetic risk:
+   it gives every food its own ambient identity without adding
+   persistent noise to the bucket area. */
+.food-spotlight{
+  position:absolute;
+  width:110px;height:110px;
+  border-radius:50%;
+  background:radial-gradient(circle, var(--spot-color,#e8fdf0) 0%, transparent 75%);
+  top:50%;left:50%;
+  transform:translate(-50%,-60%) scale(1);
+  transition:background .3s;
+  pointer-events:none;
+  animation:spot-pulse .5s ease-out;
+}
+@keyframes spot-pulse{
+  0%{transform:translate(-50%,-60%) scale(.4);opacity:0;}
+  60%{transform:translate(-50%,-60%) scale(1.15);opacity:1;}
+  100%{transform:translate(-50%,-60%) scale(1);opacity:1;}
+}
+.food-emoji{
+  font-size:4.8rem;
+  line-height:1;
+  display:block;
+  position:relative;z-index:1;
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.13));
+  user-select:none;
+}
+.food-name{
+  font-family:'Fredoka',sans-serif;
+  font-weight:700;
+  font-size:1.65rem;
+  color:var(--ink);
+  margin-top:7px;
+  letter-spacing:.01em;
+  position:relative;z-index:1;
+}
+.food-hint{
+  font-family:'Nunito',sans-serif;
+  font-size:.85rem;
+  color:var(--ink-soft);
+  font-weight:700;
+  margin-top:3px;
+  min-height:1.2em;
+  position:relative;z-index:1;
+}
+
+/* ── Bucket grid ── */
+.buckets{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:4px;
+}
+.bucket{
+  border-radius:20px;
+  padding:14px 8px 12px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  cursor:pointer;
+  border:3px solid transparent;
+  transition:transform .08s, box-shadow .08s, border-color .15s;
+  position:relative;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+.bucket:active{transform:scale(.96);}
+.bucket .bucket-icon{font-size:2rem;line-height:1;pointer-events:none;}
+.bucket .bucket-label{
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:.92rem;
+  line-height:1.2;
+  pointer-events:none;
+}
+
+.bucket-granen{
+  background:#fef3c7;
+  box-shadow:0 5px 0 var(--g-granen-dk);
+  color:var(--g-granen-dk);
+}
+.bucket-granen:hover{background:#fde68a;border-color:var(--g-granen);}
+
+.bucket-eiwitten{
+  background:#fee2e2;
+  box-shadow:0 5px 0 var(--g-eiwitten-dk);
+  color:var(--g-eiwitten-dk);
+}
+.bucket-eiwitten:hover{background:#fecaca;border-color:var(--g-eiwitten);}
+
+.bucket-groente{
+  background:#dcfce7;
+  box-shadow:0 5px 0 var(--g-groente-dk);
+  color:var(--g-groente-dk);
+}
+.bucket-groente:hover{background:#bbf7d0;border-color:var(--g-groente);}
+
+.bucket-zuivel{
+  background:#dbeafe;
+  box-shadow:0 5px 0 var(--g-zuivel-dk);
+  color:var(--g-zuivel-dk);
+}
+.bucket-zuivel:hover{background:#bfdbfe;border-color:var(--g-zuivel);}
+
+.bucket-soms{
+  background:#f3e8ff;
+  box-shadow:0 5px 0 var(--g-soms-dk);
+  color:var(--g-soms-dk);
+}
+.bucket-soms:hover{background:#e9d5ff;border-color:var(--g-soms);}
+
+.bucket.correct-flash{
+  animation:flash-correct .45s ease;
+}
+.bucket.wrong-flash{
+  animation:flash-wrong .45s ease;
+}
+
+@keyframes flash-correct{
+  0%{transform:scale(1);}
+  30%{transform:scale(1.07);}
+  60%{transform:scale(.98);}
+  100%{transform:scale(1);}
+}
+@keyframes flash-wrong{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-6px);}
+  40%{transform:translateX(6px);}
+  60%{transform:translateX(-4px);}
+  80%{transform:translateX(4px);}
+}
+
+/* ── Flying food particle ── */
+.fly-particle{
+  position:fixed;
+  font-size:2.4rem;
+  pointer-events:none;
+  z-index:9999;
+  will-change:transform,opacity;
+}
+
+/* ── Feedback strip ── */
+.feedback{
+  min-height:28px;
+  font-family:'Fredoka',sans-serif;
+  font-size:1.15rem;
+  font-weight:600;
+  margin-top:10px;
+}
+.feedback.good{color:var(--good);}
+.feedback.bad{color:var(--bad);}
+
+/* ── Hint footer ── */
+.hint-foot{
+  font-size:.8rem;
+  color:var(--ink-soft);
+  font-weight:700;
+  margin-top:12px;
+}
+
+/* ── Overlays ── */
+.overlay-content{padding:10px 0 4px;}
+.overlay-content .q{
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:1.1rem;
+  color:var(--ink);
+  margin-bottom:16px;
+  line-height:1.4;
+}
+#endScreen .score-big{
+  font-family:'Fredoka',sans-serif;
+  font-weight:700;
+  font-size:3rem;
+  color:var(--violet-dark);
+  line-height:1;
+}
+#endScreen .score-label{
+  font-size:.9rem;
+  color:var(--ink-soft);
+  font-weight:800;
+  margin-top:2px;
+  margin-bottom:14px;
+}
+#endScreen .end-emoji{font-size:3.4rem;margin-bottom:4px;}
+#endScreen .end-message{
+  font-family:'Fredoka',sans-serif;
+  font-weight:600;
+  font-size:1.15rem;
+  color:var(--ink);
+  margin-bottom:16px;
+  line-height:1.45;
+}
+
+/* ── Soms eten badge ── */
+.soms-badge{
+  display:inline-block;
+  background:#f3e8ff;
+  color:var(--g-soms-dk);
+  font-family:'Fredoka',sans-serif;
+  font-size:.78rem;
+  font-weight:600;
+  border-radius:8px;
+  padding:1px 7px;
+  margin-top:2px;
+}
+
+/* ── 5-bucket mode (when soms food appears) ── */
+.buckets.five{
+  grid-template-columns:1fr 1fr;
+}
+.buckets.five .bucket:last-child{
+  grid-column:1 / -1;
+}
+
+/* ── Reveal correct bucket after wrong answer ── */
+.bucket.reveal-correct{
+  outline:3px solid var(--good);
+  outline-offset:2px;
+}
+
+/* ── Start screen food parade ── */
+.food-parade{
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  font-size:2rem;
+  margin-bottom:16px;
+  flex-wrap:wrap;
+  line-height:1;
+}
+
+/* ── Progress pills in top bar ── */
+.top{width:100%;max-width:var(--maxw);display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← Menu</a>
+<div class="top">
+  <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+  <div class="pill"><span class="lbl">Vraag</span><span class="val" id="qnum">0/20</span></div>
+</div>
+
+<div class="card">
+  <h1>🥗 Gezond Eten</h1>
+  <p class="sub">Welke voedselgroep hoort dit bij?</p>
+  <div class="best" id="best"></div>
+  <div class="levelbar" id="levelbar"></div>
+
+  <!-- START SCREEN -->
+  <div id="startScreen" class="overlay-content">
+    <div class="food-parade" aria-hidden="true">🍎 🥦 🍞 🥩 🧀 🍌 🥚 🌾</div>
+    <p class="q">Sorteer 20 etenswaren naar de juiste voedselgroep.<br>Klik op het goede bakje!</p>
+    <button class="bigbtn" id="startBtn">Start 🚀</button>
+  </div>
+
+  <!-- PLAY SCREEN -->
+  <div id="playScreen" class="hidden-el">
+    <div class="food-stage">
+      <div class="food-spotlight" id="spotlight" aria-hidden="true"></div>
+      <span class="food-emoji" id="foodEmoji">🍎</span>
+      <span class="food-name" id="foodName">Appel</span>
+      <span class="food-hint" id="foodHint"></span>
+    </div>
+
+    <div class="buckets" id="bucketsGrid">
+      <button class="bucket bucket-granen" data-group="granen" aria-label="Granen">
+        <span class="bucket-icon">🌾</span>
+        <span class="bucket-label">Granen</span>
+      </button>
+      <button class="bucket bucket-eiwitten" data-group="eiwitten" aria-label="Eiwitten">
+        <span class="bucket-icon">🥩</span>
+        <span class="bucket-label">Eiwitten</span>
+      </button>
+      <button class="bucket bucket-groente" data-group="groente" aria-label="Groente &amp; Fruit">
+        <span class="bucket-icon">🥦</span>
+        <span class="bucket-label">Groente &amp; Fruit</span>
+      </button>
+      <button class="bucket bucket-zuivel" data-group="zuivel" aria-label="Vetten &amp; Zuivel">
+        <span class="bucket-icon">🧈</span>
+        <span class="bucket-label">Vetten &amp; Zuivel</span>
+      </button>
+      <button class="bucket bucket-soms hidden-el" data-group="soms" aria-label="Soms eten">
+        <span class="bucket-icon">🍬</span>
+        <span class="bucket-label">Soms eten</span>
+      </button>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <p class="hint-foot">Klik op het juiste bakje!</p>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="endScreen" class="hidden-el overlay-content">
+    <div class="end-emoji" id="endEmoji">🎉</div>
+    <h1 id="endTitle">Goed gedaan!</h1>
+    <div class="score-big" id="scoreDisplay">0/20</div>
+    <div class="score-label">goed gesorteerd</div>
+    <p class="end-message" id="endMessage">Jij eet gezond!</p>
+    <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ── Food data ── */
+  /* groups: granen | eiwitten | groente | zuivel | soms */
+  /* spot: spotlight disc colour (per-group ambient tint) */
+  const FOODS = [
+    // Granen
+    {e:'🍞', n:'Brood',       g:'granen',   spot:'#fef9e7'},
+    {e:'🍝', n:'Pasta',       g:'granen',   spot:'#fef9e7'},
+    {e:'🍚', n:'Rijst',       g:'granen',   spot:'#fef9e7'},
+    {e:'🥣', n:'Havermout',   g:'granen',   spot:'#fef9e7'},
+    {e:'🥐', n:'Croissant',   g:'granen',   spot:'#fef9e7'},
+    {e:'🫓', n:'Roggebrood',  g:'granen',   spot:'#fef9e7'},
+    {e:'🌽', n:'Maïs',        g:'granen',   spot:'#fef9e7'},
+    // Eiwitten
+    {e:'🥩', n:'Vlees',       g:'eiwitten', spot:'#fef2f2'},
+    {e:'🐟', n:'Vis',         g:'eiwitten', spot:'#fef2f2'},
+    {e:'🥚', n:'Ei',          g:'eiwitten', spot:'#fef2f2'},
+    {e:'🫘', n:'Bonen',       g:'eiwitten', spot:'#fef2f2'},
+    {e:'🍗', n:'Kip',         g:'eiwitten', spot:'#fef2f2'},
+    {e:'🥜', n:'Noten',       g:'eiwitten', spot:'#fef2f2'},
+    {e:'🫛', n:'Doperwten',   g:'eiwitten', spot:'#fef2f2'},
+    // Groente & Fruit
+    {e:'🍎', n:'Appel',       g:'groente',  spot:'#f0fdf4'},
+    {e:'🍌', n:'Banaan',      g:'groente',  spot:'#f0fdf4'},
+    {e:'🥦', n:'Broccoli',    g:'groente',  spot:'#f0fdf4'},
+    {e:'🥕', n:'Wortel',      g:'groente',  spot:'#f0fdf4'},
+    {e:'🍓', n:'Aardbei',     g:'groente',  spot:'#f0fdf4'},
+    {e:'🍊', n:'Sinaasappel', g:'groente',  spot:'#f0fdf4'},
+    {e:'🥒', n:'Komkommer',   g:'groente',  spot:'#f0fdf4'},
+    {e:'🍇', n:'Druiven',     g:'groente',  spot:'#f0fdf4'},
+    {e:'🥬', n:'Sla',         g:'groente',  spot:'#f0fdf4'},
+    {e:'🍅', n:'Tomaat',      g:'groente',  spot:'#f0fdf4'},
+    {e:'🫑', n:'Paprika',     g:'groente',  spot:'#f0fdf4'},
+    // Vetten & Zuivel
+    {e:'🧀', n:'Kaas',        g:'zuivel',   spot:'#eff6ff'},
+    {e:'🥛', n:'Melk',        g:'zuivel',   spot:'#eff6ff'},
+    {e:'🧈', n:'Boter',       g:'zuivel',   spot:'#eff6ff'},
+    {e:'🫙', n:'Yoghurt',     g:'zuivel',   spot:'#eff6ff'},
+    {e:'🍳', n:'Olijfolie',   g:'zuivel',   spot:'#eff6ff'},
+    // Soms eten
+    {e:'🍟', n:'Friet',       g:'soms',     spot:'#faf5ff'},
+    {e:'🍬', n:'Snoep',       g:'soms',     spot:'#faf5ff'},
+    {e:'🍕', n:'Pizza',       g:'soms',     spot:'#faf5ff'},
+    {e:'🍪', n:'Koek',        g:'soms',     spot:'#faf5ff'},
+    {e:'🥤', n:'Frisdrank',   g:'soms',     spot:'#faf5ff'},
+  ];
+
+  /* ── Game config ── */
+  const TOTAL     = 20;
+  const BEST_KEY  = 'voeding_best';
+  const SOMS_FIRST = 8; // show "soms" bucket only from question SOMS_FIRST onward
+
+  /* ── State ── */
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch(e) {}
+  let idx = 0, score = 0, answered = false, cur = null, queue = [];
+
+  /* ── Helpers ── */
+  const $ = id => document.getElementById(id);
+  const shuffle = a => a.slice().sort(() => Math.random() - .5);
+
+  function showBest() {
+    $('best').textContent = best > 0 ? ('🏅 Beste: ' + best + ' / ' + TOTAL) : '';
+  }
+  showBest();
+
+  function buildQueue() {
+    // Take all soms foods + a mix of others — ensure coverage
+    const soms  = FOODS.filter(f => f.g === 'soms');
+    const other = FOODS.filter(f => f.g !== 'soms');
+    // Shuffle each, pick enough to fill TOTAL slots with ~4 soms items
+    const somsCount  = Math.min(4, soms.length);
+    const otherCount = TOTAL - somsCount;
+    const picked = shuffle(soms).slice(0, somsCount)
+      .concat(shuffle(other).slice(0, otherCount));
+    return shuffle(picked);
+  }
+
+  /* ── Level bar ── */
+  function buildLevelbar() {
+    const b = $('levelbar');
+    b.innerHTML = '';
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i < idx ? ' done' : '') + (i === idx ? ' active' : '');
+      b.appendChild(d);
+    }
+  }
+
+  /* ── Render current food ── */
+  function render() {
+    answered = false;
+    cur = queue[idx];
+    buildLevelbar();
+    $('qnum').textContent = (idx + 1) + '/' + TOTAL;
+    $('feedback').textContent = '';
+    $('feedback').className = 'feedback';
+
+    /* Spotlight: set group colour and re-trigger pulse animation */
+    const spot = $('spotlight');
+    spot.style.setProperty('--spot-color', cur.spot || '#e8fdf0');
+    spot.style.animation = 'none';
+    void spot.offsetWidth; // force reflow
+    spot.style.animation = 'spot-pulse .5s ease-out';
+
+    /* Bounce-in the emoji */
+    const emojiEl = $('foodEmoji');
+    emojiEl.style.transition = 'none';
+    emojiEl.style.transform = 'scale(0)';
+    void emojiEl.offsetWidth;
+    emojiEl.style.transition = 'transform .28s cubic-bezier(.34,1.56,.64,1)';
+    emojiEl.style.transform = 'scale(1)';
+    emojiEl.textContent = cur.e;
+
+    $('foodName').textContent = cur.n;
+    $('foodHint').innerHTML = cur.g === 'soms'
+      ? '<span class="soms-badge">mag soms</span>'
+      : '';
+
+    /* Show/hide soms bucket */
+    const somsBtn = document.querySelector('[data-group="soms"]');
+    const grid    = $('bucketsGrid');
+    if (idx >= SOMS_FIRST) {
+      somsBtn.classList.remove('hidden-el');
+      grid.classList.add('five');
+    } else {
+      somsBtn.classList.add('hidden-el');
+      grid.classList.remove('five');
+    }
+
+    /* Re-enable all buckets */
+    document.querySelectorAll('.bucket').forEach(b => { b.disabled = false; });
+  }
+
+  /* ── Flying particle animation ── */
+  function flyParticle(emoji, fromEl, toEl, onDone) {
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect   = toEl.getBoundingClientRect();
+
+    const startX = fromRect.left + fromRect.width / 2;
+    const startY = fromRect.top  + fromRect.height / 2;
+    const endX   = toRect.left   + toRect.width  / 2;
+    const endY   = toRect.top    + toRect.height / 2;
+
+    const particle = document.createElement('span');
+    particle.className = 'fly-particle';
+    particle.textContent = emoji;
+    particle.style.left = startX + 'px';
+    particle.style.top  = startY + 'px';
+    particle.style.transform = 'translate(-50%,-50%) scale(1)';
+    document.body.appendChild(particle);
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+    // Arc height: go up a bit for visual arc
+    const arcH = Math.min(80, Math.abs(dy) * .6 + 30);
+
+    const duration = 480; // ms
+    let start = null;
+    function step(ts) {
+      if (!start) start = ts;
+      const t = Math.min((ts - start) / duration, 1);
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      // Parabolic arc
+      const x = startX + dx * ease;
+      const arc = -arcH * 4 * t * (t - 1); // peaks at t=0.5
+      const y = startY + dy * ease - arc;
+      const scale = 1 - t * .5;
+      const rot   = t * 360;
+      particle.style.left = x + 'px';
+      particle.style.top  = y + 'px';
+      particle.style.transform = 'translate(-50%,-50%) scale(' + scale + ') rotate(' + rot + 'deg)';
+      particle.style.opacity = t > .7 ? (1 - (t - .7) / .3) : '1';
+      if (t < 1) {
+        requestAnimationFrame(step);
+      } else {
+        particle.remove();
+        if (onDone) onDone();
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ── Answer handler ── */
+  function answer(btn, group) {
+    if (answered) return;
+    answered = true;
+
+    const fb = $('feedback');
+    /* Disable all buckets */
+    document.querySelectorAll('.bucket').forEach(b => { b.disabled = true; });
+
+    const correct = cur.g === group;
+
+    /* Fly the food emoji into the clicked bucket */
+    flyParticle(cur.e, $('foodEmoji'), btn, () => {});
+
+    if (correct) {
+      score++;
+      $('score').textContent = score;
+      btn.classList.add('correct-flash');
+      fb.className = 'feedback good';
+      fb.textContent = '✅ Goed! ' + cur.n + ' is ' + groupLabel(cur.g) + '.';
+      setTimeout(() => btn.classList.remove('correct-flash'), 500);
+    } else {
+      btn.classList.add('wrong-flash');
+      setTimeout(() => btn.classList.remove('wrong-flash'), 500);
+      const correctBtn = document.querySelector('[data-group="' + cur.g + '"]');
+      if (correctBtn) {
+        setTimeout(() => {
+          correctBtn.classList.add('reveal-correct');
+          setTimeout(() => correctBtn.classList.remove('reveal-correct'), 900);
+        }, 120);
+      }
+      fb.className = 'feedback bad';
+      fb.textContent = '❌ ' + cur.n + ' hoort bij: ' + groupLabel(cur.g) + '.';
+    }
+
+    idx++;
+    buildLevelbar();
+    $('qnum').textContent = (idx < TOTAL ? idx + 1 : TOTAL) + '/' + TOTAL;
+
+    setTimeout(() => {
+      if (idx >= TOTAL) endGame();
+      else render();
+    }, 1250);
+  }
+
+  function groupLabel(g) {
+    return {
+      granen:  'Granen 🌾',
+      eiwitten:'Eiwitten 🥩',
+      groente: 'Groente & Fruit 🥦',
+      zuivel:  'Vetten & Zuivel 🧈',
+      soms:    'Soms eten 🍬',
+    }[g] || g;
+  }
+
+  /* ── End game ── */
+  function endGame() {
+    $('playScreen').classList.add('hidden-el');
+    $('endScreen').classList.remove('hidden-el');
+
+    let rec = false;
+    if (score > best) {
+      best = score;
+      rec = true;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+    }
+    showBest();
+
+    $('scoreDisplay').textContent = score + '/' + TOTAL;
+
+    const pct = score / TOTAL;
+    let emoji, title, msg;
+    if (pct === 1) {
+      emoji = '🏆'; title = 'Voedingskampioen!';
+      msg   = 'Perfecte score! Jij weet precies wat gezond eten is. 🥗';
+    } else if (pct >= .8) {
+      emoji = '🎉'; title = 'Super gedaan!';
+      msg   = 'Jij eet heel gezond! ' + (rec ? '🏅 Nieuw record!' : 'Nog een keer voor een topscore?');
+    } else if (pct >= .6) {
+      emoji = '😊'; title = 'Goed bezig!';
+      msg   = 'Je weet al veel over gezond eten. Blijf oefenen!';
+    } else {
+      emoji = '💪'; title = 'Blijf oefenen!';
+      msg   = 'Elke keer leer je meer over gezond eten. Probeer het opnieuw!';
+    }
+
+    $('endEmoji').textContent = emoji;
+    $('endTitle').textContent = title;
+    $('endMessage').textContent = msg;
+  }
+
+  /* ── Start game ── */
+  function startGame() {
+    idx = 0; score = 0;
+    $('score').textContent = '0';
+    queue = buildQueue();
+    $('startScreen').classList.add('hidden-el');
+    $('endScreen').classList.add('hidden-el');
+    $('playScreen').classList.remove('hidden-el');
+    render();
+  }
+
+  /* ── Wire up buckets ── */
+  document.querySelectorAll('.bucket').forEach(btn => {
+    btn.addEventListener('click', () => answer(btn, btn.dataset.group));
+  });
+
+  $('startBtn').addEventListener('click', startGame);
+  $('againBtn').addEventListener('click', startGame);
+})();
+</script>
+</body>
+</html>

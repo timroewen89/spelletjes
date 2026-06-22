@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meten &amp; Wegen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{
+    --accent:#0891b2;
+    --accent-dark:#0e7490;
+    --violet:#0891b2;
+    --violet-dark:#0e7490;
+  }
+
+  .top{width:100%;max-width:560px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;}
+
+  .card{
+    background:#fff;
+    width:100%;max-width:560px;
+    border-radius:30px;
+    padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);
+    text-align:center;
+  }
+
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--accent-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;}
+  .best{color:var(--accent-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--accent);transform:scale(1.3);}
+
+  /* Category badge shown during play */
+  .cat-badge{
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:.9rem;
+    color:#fff;background:var(--accent);
+    border-radius:999px;padding:4px 14px;
+    margin-bottom:12px;letter-spacing:.02em;
+  }
+
+  /* Canvas wrapper — tinted bg per category */
+  .canvas-wrap{
+    border-radius:18px;
+    padding:16px 10px 12px;
+    margin-bottom:16px;
+    transition:background .3s;
+  }
+  .canvas-wrap.ruler-bg  {background:#e0f7fa;}
+  .canvas-wrap.scale-bg  {background:#fff8e1;}
+  .canvas-wrap.cup-bg    {background:#e3f2fd;}
+
+  canvas#visual{
+    display:block;
+    margin:0 auto;
+    max-width:100%;
+  }
+
+  .qhint{
+    font-family:'Fredoka',sans-serif;font-weight:600;
+    color:var(--ink);font-size:1.2rem;
+    margin:0 0 14px;
+  }
+
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .opt{
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:1.4rem;
+    color:var(--ink);background:var(--surface);
+    border:none;border-radius:16px;padding:15px 0;cursor:pointer;
+    box-shadow:0 5px 0 var(--surface2);
+    transition:transform .06s;
+  }
+  .opt:active{transform:translateY(3px);box-shadow:0 2px 0 var(--surface2);}
+  .opt.good{background:var(--good);color:#fff;box-shadow:0 5px 0 #11823b;}
+  .opt.bad {background:var(--bad);color:#fff;box-shadow:0 5px 0 #a81d1d;}
+  .opt:disabled{cursor:default;}
+
+  .feedback{
+    min-height:30px;
+    font-family:'Fredoka',sans-serif;font-size:1.2rem;font-weight:600;
+    margin-top:14px;
+  }
+  .feedback.good{color:var(--good);}
+  .feedback.bad {color:var(--bad);}
+
+  /* Start screen intro list */
+  .intro-list{
+    list-style:none;
+    display:flex;flex-direction:column;gap:8px;
+    margin:0 0 20px;
+    text-align:left;
+  }
+  .intro-list li{
+    display:flex;align-items:center;gap:10px;
+    font-weight:700;color:var(--ink);font-size:.95rem;
+    background:var(--surface);border-radius:12px;padding:10px 14px;
+  }
+  .intro-list li span.ico{font-size:1.4rem;flex-shrink:0;}
+
+  .hint-foot{
+    margin-top:18px;
+    font-size:.82rem;font-weight:700;
+    color:var(--ink-soft);
+  }
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill">
+      <span class="lbl">Vraag</span>
+      <span class="val" id="qnum">-</span>
+    </div>
+    <div class="pill">
+      <span class="lbl">Goed</span>
+      <span class="val" id="score">0</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>📏 Meten &amp; Wegen</h1>
+    <p class="sub">Liniaaltje, weegschaal en maatbeker!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <ul class="intro-list">
+        <li><span class="ico">📏</span><span>Liniaal — hoe lang is het voorwerp?</span></li>
+        <li><span class="ico">⚖️</span><span>Weegschaal — hoe zwaar is het?</span></li>
+        <li><span class="ico">🧪</span><span>Maatbeker — hoeveel vloeistof?</span></li>
+      </ul>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+      <p class="hint-foot">10 vragen · kies het goede antwoord</p>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+      <div class="cat-badge" id="catBadge">📏 Liniaal</div>
+      <div class="canvas-wrap ruler-bg" id="canvasWrap">
+        <canvas id="visual" width="480" height="160"></canvas>
+      </div>
+      <div class="qhint" id="qhint">Hoe lang is dit voorwerp?</div>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.4rem" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+/* ── constants ── */
+const TOTAL = 10;
+const BEST_KEY = "meten_best";
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e){}
+
+let idx = 0, score = 0, cur = null, answered = false;
+const $ = id => document.getElementById(id);
+const canvas = $("visual");
+const ctx = canvas.getContext("2d");
+
+function showBest(){ $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " / " + TOTAL) : ""; }
+showBest();
+
+/* ── helpers ── */
+const shuffle = a => a.map(x => [Math.random(), x]).sort((p,q) => p[0]-q[0]).map(p => p[1]);
+function unique4(correct, gen){
+  const set = new Set([correct]);
+  let guard = 0;
+  while(set.size < 4 && guard++ < 80){ const v = gen(); if(v > 0) set.add(v); }
+  return shuffle([...set]);
+}
+
+/* ── CATEGORY DEFINITIONS ── */
+
+/* 1. RULER */
+function makeRuler(){
+  // object length 2–29 cm (whole numbers, so kids can count ticks)
+  const len = 2 + Math.floor(Math.random() * 28);
+  // object starts at a random offset so it's not always at 0
+  const maxStart = 30 - len;
+  const start = Math.floor(Math.random() * Math.min(maxStart, 10));
+  const correct = len; // always ask "how long" (length, not end position)
+  const opts = unique4(correct, () => {
+    // distractor: ±1..5 cm
+    const d = 1 + Math.floor(Math.random() * 5);
+    return correct + (Math.random() < 0.5 ? d : -d);
+  });
+  return { type:"ruler", start, len, correct, opts,
+    question:"Hoe lang is het voorwerp?",
+    fmt: v => v + " cm" };
+}
+
+/* 2. SCALE */
+const WEIGHTS = [
+  {val:100,lbl:"100 g",unit:"g"},
+  {val:250,lbl:"250 g",unit:"g"},
+  {val:500,lbl:"500 g",unit:"g"},
+  {val:750,lbl:"750 g",unit:"g"},
+  {val:1000,lbl:"1 kg",unit:"kg"},
+  {val:1500,lbl:"1,5 kg",unit:"kg"},
+  {val:2000,lbl:"2 kg",unit:"kg"},
+  {val:3000,lbl:"3 kg",unit:"kg"},
+  {val:5000,lbl:"5 kg",unit:"kg"},
+];
+const OBJECTS = [
+  {icon:"🍎",name:"appel"},
+  {icon:"🥦",name:"broccoli"},
+  {icon:"🧅",name:"ui"},
+  {icon:"🍊",name:"sinaasappel"},
+  {icon:"🥕",name:"wortel"},
+  {icon:"🧁",name:"cupcake"},
+  {icon:"📚",name:"boek"},
+  {icon:"🐱",name:"kat"},
+];
+function makeScale(){
+  const w = WEIGHTS[Math.floor(Math.random() * WEIGHTS.length)];
+  const obj = OBJECTS[Math.floor(Math.random() * OBJECTS.length)];
+  const correct = w.lbl;
+  const allLabels = WEIGHTS.map(x => x.lbl);
+  const opts = unique4(correct, () => {
+    const r = allLabels[Math.floor(Math.random() * allLabels.length)];
+    return r !== correct ? r : null;
+  }).filter(Boolean);
+  // make sure we have 4
+  const finalOpts = shuffle(Array.from(new Set([correct, ...opts])).slice(0,4));
+  return { type:"scale", weightVal:w.val, weightLbl:w.lbl, obj, correct, opts: finalOpts,
+    question:"Hoe zwaar is de " + obj.name + "?",
+    fmt: v => v };
+}
+
+/* 3. MEASURING CUP */
+const VOLUMES = [
+  {val:50,  lbl:"50 ml"},
+  {val:100, lbl:"100 ml"},
+  {val:150, lbl:"150 ml"},
+  {val:200, lbl:"200 ml"},
+  {val:250, lbl:"250 ml"},
+  {val:300, lbl:"300 ml"},
+  {val:400, lbl:"400 ml"},
+  {val:500, lbl:"500 ml"},
+  {val:750, lbl:"750 ml"},
+  {val:1000,lbl:"1 liter"},
+];
+const LIQUIDS = [
+  {color:"#fde68a",name:"sap"},
+  {color:"#93c5fd",name:"water"},
+  {color:"#f9a8d4",name:"limonade"},
+  {color:"#6ee7b7",name:"groene thee"},
+  {color:"#fdba74",name:"sinaasappelsap"},
+];
+function makeCup(){
+  const v = VOLUMES[Math.floor(Math.random() * VOLUMES.length)];
+  const liq = LIQUIDS[Math.floor(Math.random() * LIQUIDS.length)];
+  const correct = v.lbl;
+  const allLabels = VOLUMES.map(x => x.lbl);
+  const opts = unique4(correct, () => {
+    const r = allLabels[Math.floor(Math.random() * allLabels.length)];
+    return r !== correct ? r : null;
+  }).filter(Boolean);
+  const finalOpts = shuffle(Array.from(new Set([correct, ...opts])).slice(0,4));
+  return { type:"cup", volumeVal:v.val, volumeLbl:v.lbl, liquid:liq, correct, opts:finalOpts,
+    question:"Hoeveel vloeistof zit er in de maatbeker?",
+    fmt: v => v };
+}
+
+/* ── GENERATORS ── */
+function makeQuestion(){
+  const roll = Math.floor(Math.random() * 3);
+  if(roll === 0) cur = makeRuler();
+  else if(roll === 1) cur = makeScale();
+  else cur = makeCup();
+}
+
+/* ── DRAW FUNCTIONS ── */
+const DPR = window.devicePixelRatio || 1;
+
+function setupCanvas(w, h){
+  canvas.width  = w * DPR;
+  canvas.height = h * DPR;
+  canvas.style.width  = w + "px";
+  canvas.style.height = h + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+
+/* -- RULER DRAW -- */
+function drawRuler(start, len){
+  const W = 480, H = 160;
+  setupCanvas(W, H);
+  ctx.clearRect(0,0,W,H);
+
+  const rulerX = 20, rulerY = 80, rulerW = W - 40, rulerH = 36;
+  const cmWidth = rulerW / 30; // 30 cm ruler
+
+  // ruler body
+  const grad = ctx.createLinearGradient(rulerX, rulerY, rulerX, rulerY + rulerH);
+  grad.addColorStop(0, "#fff9c4");
+  grad.addColorStop(1, "#f9e44a");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(rulerX, rulerY, rulerW, rulerH, 5);
+  ctx.fill();
+  ctx.strokeStyle = "#d4a017";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // tick marks and numbers
+  ctx.fillStyle = "#555";
+  ctx.font = "bold 9px Nunito, sans-serif";
+  ctx.textAlign = "center";
+  for(let i = 0; i <= 30; i++){
+    const x = rulerX + i * cmWidth;
+    const isBig = i % 5 === 0;
+    const tickH = isBig ? 14 : (i % 2 === 0 ? 9 : 6);
+    ctx.strokeStyle = "#888";
+    ctx.lineWidth = isBig ? 1.5 : 0.8;
+    ctx.beginPath();
+    ctx.moveTo(x, rulerY);
+    ctx.lineTo(x, rulerY + tickH);
+    ctx.stroke();
+    if(isBig && i > 0){
+      ctx.fillStyle = "#555";
+      ctx.font = "bold 9px Nunito, sans-serif";
+      ctx.fillText(i, x, rulerY - 4);
+    }
+  }
+  // "0"
+  ctx.fillStyle = "#555";
+  ctx.font = "bold 9px Nunito, sans-serif";
+  ctx.fillText("0", rulerX, rulerY - 4);
+
+  // cm label
+  ctx.fillStyle = "#888";
+  ctx.font = "bold 10px Nunito, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText("cm", rulerX + rulerW - 4, rulerY + rulerH - 5);
+
+  // the OBJECT — a colorful bar above ruler
+  const objX = rulerX + start * cmWidth;
+  const objW = len * cmWidth;
+  const objY = rulerY - 38;
+  const objH = 28;
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.10)";
+  ctx.beginPath();
+  ctx.roundRect(objX + 2, objY + 3, objW, objH, 6);
+  ctx.fill();
+
+  // pick a cheerful object color based on length
+  const hue = (start * 37 + len * 19) % 360;
+  ctx.fillStyle = `hsl(${hue},75%,58%)`;
+  ctx.beginPath();
+  ctx.roundRect(objX, objY, objW, objH, 6);
+  ctx.fill();
+  ctx.strokeStyle = `hsl(${hue},60%,42%)`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // little pattern lines on object
+  ctx.strokeStyle = `hsla(${hue},50%,90%,0.7)`;
+  ctx.lineWidth = 1;
+  for(let d = 6; d < objW - 2; d += 8){
+    ctx.beginPath();
+    ctx.moveTo(objX + d, objY + 4);
+    ctx.lineTo(objX + d, objY + objH - 4);
+    ctx.stroke();
+  }
+
+  // arrows at ends of object
+  ctx.strokeStyle = "#333";
+  ctx.fillStyle = "#333";
+  ctx.lineWidth = 1.5;
+  // left arrow
+  ctx.beginPath(); ctx.moveTo(objX + 8, objY + objH/2); ctx.lineTo(objX, objY + objH/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(objX, objY + objH/2); ctx.lineTo(objX + 4, objY + objH/2 - 4); ctx.lineTo(objX + 4, objY + objH/2 + 4); ctx.fill();
+  // right arrow
+  const ox2 = objX + objW;
+  ctx.beginPath(); ctx.moveTo(ox2 - 8, objY + objH/2); ctx.lineTo(ox2, objY + objH/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox2, objY + objH/2); ctx.lineTo(ox2 - 4, objY + objH/2 - 4); ctx.lineTo(ox2 - 4, objY + objH/2 + 4); ctx.fill();
+
+  // vertical dashed guide lines from object ends to ruler
+  ctx.setLineDash([3,3]);
+  ctx.strokeStyle = "rgba(0,0,0,0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(objX, objY + objH); ctx.lineTo(objX, rulerY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(objX + objW, objY + objH); ctx.lineTo(objX + objW, rulerY); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/* -- SCALE DRAW -- */
+function drawScale(weightVal, obj){
+  const W = 320, H = 200;
+  setupCanvas(W, H);
+  ctx.clearRect(0,0,W,H);
+  const cx = W/2, cy = H/2 + 20;
+
+  // max scale is 5000g, dial goes from -100° to +100° around bottom
+  const maxW = 5000;
+  const fraction = Math.min(weightVal / maxW, 1);
+  // needle angle: from -80deg (left, empty) to +80deg (right, full), 0deg = bottom
+  const needleAngle = (-80 + fraction * 160) * Math.PI / 180;
+  // dial center at cy + 15
+  const dialCY = cy + 10;
+
+  // scale base — wide trapezoid
+  ctx.fillStyle = "#e0e0e0";
+  ctx.beginPath();
+  ctx.moveTo(cx - 80, dialCY + 45);
+  ctx.lineTo(cx + 80, dialCY + 45);
+  ctx.lineTo(cx + 60, dialCY + 65);
+  ctx.lineTo(cx - 60, dialCY + 65);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "#bbb";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // dial face
+  const dialR = 80;
+  const dgrad = ctx.createRadialGradient(cx, dialCY, 10, cx, dialCY, dialR);
+  dgrad.addColorStop(0, "#fff9f0");
+  dgrad.addColorStop(1, "#f5e8c8");
+  ctx.fillStyle = dgrad;
+  ctx.beginPath();
+  ctx.arc(cx, dialCY, dialR, Math.PI, 2*Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = "#d4a017";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // tick marks on dial
+  ctx.save();
+  ctx.translate(cx, dialCY);
+  for(let i = 0; i <= 10; i++){
+    const ang = (-80 + i * 16) * Math.PI / 180;
+    const isBig = i % 2 === 0;
+    const inner = dialR - (isBig ? 14 : 8);
+    ctx.strokeStyle = "#888";
+    ctx.lineWidth = isBig ? 1.5 : 0.8;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(ang) * (dialR - 2), Math.sin(ang) * (dialR - 2));
+    ctx.lineTo(Math.cos(ang) * inner, Math.sin(ang) * inner);
+    ctx.stroke();
+    if(isBig){
+      const labels = ["0","1","2","3","4","5"];
+      const li = i/2;
+      if(li <= 5){
+        ctx.fillStyle = "#555";
+        ctx.font = "bold 9px Nunito, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const tx = Math.cos(ang) * (dialR - 24);
+        const ty = Math.sin(ang) * (dialR - 24);
+        ctx.fillText(labels[li] + "kg", tx, ty);
+      }
+    }
+  }
+  ctx.restore();
+
+  // needle
+  ctx.save();
+  ctx.translate(cx, dialCY);
+  ctx.rotate(needleAngle);
+  ctx.strokeStyle = "#e74c3c";
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(0, 8);
+  ctx.lineTo(0, -(dialR - 18));
+  ctx.stroke();
+  ctx.restore();
+
+  // center cap
+  ctx.fillStyle = "#888";
+  ctx.beginPath();
+  ctx.arc(cx, dialCY, 7, 0, 2*Math.PI);
+  ctx.fill();
+  ctx.fillStyle = "#ccc";
+  ctx.beginPath();
+  ctx.arc(cx, dialCY, 4, 0, 2*Math.PI);
+  ctx.fill();
+
+  // platform / pan on top
+  ctx.fillStyle = "#c8d8e8";
+  ctx.beginPath();
+  ctx.ellipse(cx, dialCY - dialR - 18, 48, 10, 0, 0, 2*Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = "#8899aa";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // pole connecting pan to dial
+  ctx.strokeStyle = "#aaa";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(cx, dialCY - dialR + 2);
+  ctx.lineTo(cx, dialCY - dialR - 10);
+  ctx.stroke();
+
+  // object on pan — emoji rendered as text
+  ctx.font = "36px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(obj.icon, cx, dialCY - dialR - 36);
+}
+
+/* -- MEASURING CUP DRAW -- */
+function drawCup(volumeVal, liquid){
+  const W = 260, H = 200;
+  setupCanvas(W, H);
+  ctx.clearRect(0,0,W,H);
+  const cx = W/2;
+
+  const cupX = cx - 55, cupW = 110;
+  const cupTop = 18, cupBot = 175;
+  const cupH = cupBot - cupTop;
+  const handleX = cupX + cupW;
+
+  // max volume is 1000ml
+  const fraction = Math.min(volumeVal / 1000, 1);
+  const fillH = fraction * (cupH - 16);
+  const fillY = cupBot - fillH;
+
+  // cup shadow
+  ctx.fillStyle = "rgba(0,0,0,0.07)";
+  ctx.beginPath();
+  ctx.roundRect(cupX + 4, cupTop + 4, cupW, cupH, [0,0,8,8]);
+  ctx.fill();
+
+  // liquid fill (clip to cup shape)
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(cupX, cupTop, cupW, cupH, [0,0,8,8]);
+  ctx.clip();
+
+  // liquid
+  ctx.fillStyle = liquid.color;
+  ctx.fillRect(cupX, fillY, cupW, fillH);
+
+  // tiny waves on liquid surface
+  if(fillH > 6){
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for(let wx = cupX + 5; wx < cupX + cupW - 5; wx += 16){
+      ctx.moveTo(wx, fillY + 5);
+      ctx.quadraticCurveTo(wx + 5, fillY + 2, wx + 10, fillY + 5);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // cup outline
+  ctx.strokeStyle = "#90caf9";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(cupX, cupTop, cupW, cupH, [0,0,8,8]);
+  ctx.stroke();
+
+  // cup glass shine
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cupX + 10, cupTop + 8);
+  ctx.lineTo(cupX + 10, cupBot - 12);
+  ctx.stroke();
+
+  // scale marks on the cup
+  const markIntervals = [100, 250, 500, 750, 1000];
+  ctx.font = "bold 9px Nunito, sans-serif";
+  ctx.textAlign = "right";
+  for(let ml of markIntervals){
+    if(ml > 1000) continue;
+    const mFrac = ml / 1000;
+    const mY = cupBot - mFrac * (cupH - 16);
+    // line
+    ctx.strokeStyle = "rgba(0,100,180,0.4)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cupX + cupW - 22, mY);
+    ctx.lineTo(cupX + cupW - 4, mY);
+    ctx.stroke();
+    // label
+    ctx.fillStyle = "#1565c0";
+    ctx.fillText(ml < 1000 ? ml + " ml" : "1 L", cupX - 4, mY + 3);
+  }
+
+  // handle
+  ctx.strokeStyle = "#90caf9";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(handleX, cupTop + 30);
+  ctx.bezierCurveTo(handleX + 30, cupTop + 30, handleX + 30, cupBot - 40, handleX, cupBot - 40);
+  ctx.stroke();
+
+  // spout / pour lip at top left
+  ctx.strokeStyle = "#90caf9";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cupX, cupTop);
+  ctx.lineTo(cupX - 10, cupTop - 8);
+  ctx.stroke();
+}
+
+/* ── LEVEL BAR ── */
+function buildLevelbar(){
+  const b = $("levelbar");
+  b.innerHTML = "";
+  for(let i = 0; i < TOTAL; i++){
+    const d = document.createElement("div");
+    d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+    b.appendChild(d);
+  }
+}
+
+/* ── RENDER ── */
+function render(){
+  answered = false;
+  buildLevelbar();
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  makeQuestion();
+
+  // badge + bg
+  const wrap = $("canvasWrap");
+  const badge = $("catBadge");
+  if(cur.type === "ruler"){
+    badge.textContent = "📏 Liniaal";
+    wrap.className = "canvas-wrap ruler-bg";
+    drawRuler(cur.start, cur.len);
+  } else if(cur.type === "scale"){
+    badge.textContent = "⚖️ Weegschaal";
+    wrap.className = "canvas-wrap scale-bg";
+    drawScale(cur.weightVal, cur.obj);
+  } else {
+    badge.textContent = "🧪 Maatbeker";
+    wrap.className = "canvas-wrap cup-bg";
+    drawCup(cur.volumeVal, cur.liquid);
+  }
+
+  $("qhint").textContent = cur.question;
+
+  const o = $("opts");
+  o.innerHTML = "";
+  cur.opts.forEach(v => {
+    const b = document.createElement("button");
+    b.className = "opt";
+    b.textContent = cur.fmt(v);
+    b.onclick = () => answer(b, v);
+    o.appendChild(b);
+  });
+
+  $("qnum").textContent = (idx + 1) + " / " + TOTAL;
+}
+
+/* ── ANSWER ── */
+function answer(btn, val){
+  if(answered) return;
+  answered = true;
+  const fb = $("feedback");
+  [...$("opts").children].forEach(b => {
+    b.disabled = true;
+    if(b.textContent === cur.fmt(cur.correct)) b.classList.add("good");
+  });
+  if(val === cur.correct){
+    score++;
+    $("score").textContent = score;
+    fb.className = "feedback good";
+    fb.textContent = "✅ Goed zo!";
+  } else {
+    btn.classList.add("bad");
+    fb.className = "feedback bad";
+    fb.textContent = "❌ Het was " + cur.fmt(cur.correct);
+  }
+  idx++;
+  buildLevelbar();
+  setTimeout(() => { if(idx >= TOTAL) endGame(); else render(); }, 1150);
+}
+
+/* ── GAME FLOW ── */
+function startGame(){
+  idx = 0; score = 0;
+  $("score").textContent = "0";
+  $("qnum").textContent = "1 / " + TOTAL;
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame(){
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+  let rec = false;
+  if(score > best){
+    best = score; rec = true;
+    try{ localStorage.setItem(BEST_KEY, String(best)); } catch(e){}
+  }
+  showBest();
+  $("endEmoji").textContent = score === TOTAL ? "🏆" : (score >= 7 ? "🎉" : "💪");
+  $("endTitle").textContent  = score === TOTAL ? "Meester meten!" : (score >= 7 ? "Goed gedaan!" : "Blijf oefenen!");
+  $("endText").innerHTML = "Je had <b>" + score + " van de " + TOTAL + "</b> goed!" + (rec && score > 0 ? " 🏅 record!" : "");
+}
+
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+</script>
+</body>
+</html>

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Getallenlijn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  :root{--violet:#8b5cf6;--violet-dark:#6d28d9;--amber:#f59e0b;--amber-dark:#d97706;}
+
+  .top{width:100%;max-width:600px;display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+  .top .pill .val{color:var(--violet-dark);}
+
+  .card{background:#fff;width:100%;max-width:600px;border-radius:30px;padding:26px 24px 30px;
+    box-shadow:0 18px 40px rgba(43,45,107,.12);text-align:center;}
+
+  h1{font-family:'Fredoka',sans-serif;font-weight:700;font-size:2rem;color:var(--violet-dark);}
+  .sub{color:var(--ink-soft);font-weight:700;margin-top:4px;margin-bottom:14px;font-size:.95rem;}
+  .best{color:var(--violet-dark);font-weight:800;font-size:.9rem;margin-bottom:12px;min-height:1.1em;}
+
+  .levelbar{display:flex;gap:7px;justify-content:center;margin-bottom:16px;flex-wrap:wrap;}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--surface2);}
+  .dot.done{background:var(--mint);}
+  .dot.active{background:var(--violet);transform:scale(1.3);}
+
+  /* ── Start screen ── */
+  .intro-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 22px;}
+  .intro-tile{background:var(--surface);border-radius:16px;padding:14px 10px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .intro-tile .ti{font-size:1.7rem;line-height:1;}
+  .intro-tile .tt{font-family:'Fredoka',sans-serif;font-weight:600;font-size:.82rem;
+    color:var(--ink);line-height:1.3;}
+  .level-preview{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;}
+  .lp{background:var(--surface2);border-radius:10px;padding:5px 10px;
+    font-family:'Fredoka',sans-serif;font-weight:600;font-size:.78rem;color:var(--violet-dark);}
+  .lp.neg{background:#fce7f3;color:#9d174d;}
+
+  /* ── Play screen ── */
+  .play-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .difficulty-badge{display:inline-flex;align-items:center;gap:5px;font-family:'Fredoka',sans-serif;
+    font-size:.85rem;font-weight:600;background:var(--surface2);color:var(--violet-dark);
+    border-radius:10px;padding:4px 11px;}
+  .difficulty-badge .dbdot{width:8px;height:8px;border-radius:50%;background:var(--violet);display:inline-block;}
+  .question-label{font-family:'Nunito',sans-serif;font-weight:700;font-size:.9rem;
+    color:var(--ink-soft);letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;}
+
+  /* Big number stage */
+  .number-stage{display:flex;align-items:center;justify-content:center;min-height:90px;margin-bottom:12px;}
+  .number-display{
+    font-family:'Fredoka',sans-serif;font-weight:700;font-size:5rem;color:var(--violet-dark);line-height:1;
+    display:flex;align-items:center;justify-content:center;
+    width:110px;height:110px;border-radius:50%;
+    background:conic-gradient(from 220deg,#ede9fe,#ddd6fe,#c4b5fd,#ede9fe);
+    box-shadow:0 0 0 4px #ede9fe,0 8px 28px rgba(109,40,217,.18);
+  }
+  @keyframes numDrop{
+    0%  {opacity:0;transform:translateY(-26px) scale(.72);}
+    60% {opacity:1;transform:translateY(5px)   scale(1.04);}
+    80% {transform:translateY(-3px) scale(.98);}
+    100%{transform:translateY(0)   scale(1);}
+  }
+  .number-display.animate{animation:numDrop .38s cubic-bezier(.34,1.56,.64,1) both;}
+  @media(prefers-reduced-motion:reduce){.number-display.animate{animation:none;}}
+
+  /* Canvas */
+  .canvas-wrap{width:100%;overflow-x:auto;border-radius:18px;
+    box-shadow:inset 0 2px 6px rgba(43,45,107,.07);margin-bottom:8px;}
+  #lineCanvas{display:block;max-width:100%;cursor:crosshair;touch-action:none;border-radius:16px;}
+
+  /* Feedback */
+  .feedback{min-height:36px;font-family:'Fredoka',sans-serif;font-size:1.2rem;font-weight:600;
+    margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .feedback.good {color:var(--good);}
+  .feedback.close{color:var(--amber-dark);}
+  .feedback.bad  {color:var(--bad);}
+
+  /* End screen */
+  .end-emoji{font-size:3rem;margin:10px 0 4px;}
+  .score-ring{width:120px;height:120px;border-radius:50%;margin:12px auto 16px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:conic-gradient(from 220deg,#ede9fe,#ddd6fe,#c4b5fd,#ede9fe);
+    box-shadow:0 0 0 5px #ede9fe,0 10px 30px rgba(109,40,217,.18);}
+  .score-ring .sr-num{font-family:'Fredoka',sans-serif;font-size:2.4rem;font-weight:700;
+    color:var(--violet-dark);line-height:1;}
+  .score-ring .sr-max{font-family:'Nunito',sans-serif;font-size:.8rem;font-weight:700;color:var(--ink-soft);}
+
+  .hint-foot{text-align:center;color:var(--ink-soft);font-weight:700;font-size:.85rem;}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill"><span class="lbl">Ronde</span><span class="val" id="roundPill">1/10</span></div>
+    <div class="pill"><span class="lbl">Score</span><span class="val" id="score">0</span></div>
+  </div>
+
+  <div class="card">
+    <h1>🔢 Getallenlijn</h1>
+    <p class="sub">Zet het getal op de juiste plek op de lijn!</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- Start Screen -->
+    <div id="startScreen">
+      <div class="intro-grid">
+        <div class="intro-tile">
+          <div class="ti">👁️</div>
+          <div class="tt">Kijk naar het getal</div>
+        </div>
+        <div class="intro-tile">
+          <div class="ti">🎯</div>
+          <div class="tt">Klik op de juiste plek</div>
+        </div>
+        <div class="intro-tile">
+          <div class="ti">⭐</div>
+          <div class="tt">Dichtbij = meer punten!</div>
+        </div>
+      </div>
+      <div class="level-preview">
+        <div class="lp">0 – 10</div>
+        <div class="lp">0 – 20</div>
+        <div class="lp">0 – 100</div>
+        <div class="lp">0 – 1000</div>
+        <div class="lp neg">−10 – 10</div>
+      </div>
+      <button class="bigbtn" id="startBtn">Speel nu 🚀</button>
+    </div>
+
+    <!-- Play Screen -->
+    <div id="playScreen" class="hidden-el">
+      <div class="play-header">
+        <div class="difficulty-badge"><span class="dbdot"></span><span id="diffBadge">Niveau 1</span></div>
+        <div style="font-family:'Fredoka',sans-serif;font-size:.85rem;color:var(--ink-soft);font-weight:600;">Klik op de lijn!</div>
+      </div>
+      <div class="question-label">Waar staat dit getal?</div>
+      <div class="number-stage">
+        <div class="number-display" id="numDisplay">7</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="lineCanvas" width="536" height="116"></canvas>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="endScreen" class="hidden-el">
+      <div class="end-emoji" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <div class="score-ring">
+        <div class="sr-num" id="endScore">0</div>
+        <div class="sr-max" id="endMax">van 30</div>
+      </div>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+  <div class="hint-foot">Klik of tik op de lijn • Perfect = 3pt • Bijna = 1pt</div>
+
+<script>
+(function(){
+  const TOTAL = 10, BEST_KEY = "getallenlijn_best";
+  let best = 0;
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e){}
+
+  let idx = 0, score = 0, answered = false, cur = null;
+  const $ = id => document.getElementById(id);
+
+  function levelForRound(i) {
+    if (i < 2) return { min: 0,   max: 10,   label: "0 – 10",   name: "Niveau 1" };
+    if (i < 4) return { min: 0,   max: 20,   label: "0 – 20",   name: "Niveau 2" };
+    if (i < 6) return { min: 0,   max: 100,  label: "0 – 100",  name: "Niveau 3" };
+    if (i < 8) return { min: 0,   max: 1000, label: "0 – 1000", name: "Niveau 4" };
+    return          { min: -10,  max: 10,   label: "−10 – 10", name: "Uitdaging!" };
+  }
+
+  function randInt(mn, mx) { return mn + Math.floor(Math.random() * (mx - mn + 1)); }
+
+  function makeQuestion() {
+    const lv = levelForRound(idx);
+    let num;
+    do { num = randInt(lv.min + 1, lv.max - 1); } while(num === lv.min || num === lv.max);
+    cur = { num, min: lv.min, max: lv.max, label: lv.label, name: lv.name };
+  }
+
+  /* ── Canvas setup ── */
+  const canvas = $("lineCanvas");
+  const ctx    = canvas.getContext("2d");
+
+  const PAD_L = 56, PAD_R = 56;
+  const LINE_Y = 58;
+  const LINE_W = canvas.width - PAD_L - PAD_R;
+
+  function numToX(n) {
+    return PAD_L + ((n - cur.min) / (cur.max - cur.min)) * LINE_W;
+  }
+  function xToNum(x) {
+    return cur.min + ((x - PAD_L) / LINE_W) * (cur.max - cur.min);
+  }
+
+  function roundFill(x, y, w, h, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawLine(clickX, grade) {
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    /* canvas background */
+    roundFill(0, 0, W, H, 14, "#f3f1fb");
+
+    /* ruler tape — amber strip with alternating bands */
+    const tapeTop = LINE_Y - 22, tapeBot = LINE_Y + 22;
+    const tapeH = tapeBot - tapeTop;
+    roundFill(PAD_L - 4, tapeTop, LINE_W + 8, tapeH, 6, "#fef3c7");
+
+    const ticks = getTicks(cur.min, cur.max);
+    for (let i = 0; i < ticks.length - 1; i++) {
+      if (i % 2 === 0) continue;
+      const x0 = numToX(ticks[i]);
+      const x1 = numToX(ticks[i + 1]);
+      ctx.fillStyle = "#fde68a";
+      ctx.fillRect(x0, tapeTop, x1 - x0, tapeH);
+    }
+
+    /* ruler tape border */
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(PAD_L - 4, tapeTop, LINE_W + 8, tapeH);
+
+    /* main violet line over tape */
+    const grad = ctx.createLinearGradient(PAD_L, 0, PAD_L + LINE_W, 0);
+    grad.addColorStop(0, "#8b5cf6");
+    grad.addColorStop(1, "#c084fc");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(PAD_L, LINE_Y);
+    ctx.lineTo(PAD_L + LINE_W, LINE_Y);
+    ctx.stroke();
+
+    /* ticks and labels */
+    drawTicks();
+
+    /* ── Post-click markers ── */
+    if (clickX !== null) {
+      const correctX = numToX(cur.num);
+
+      if (Math.abs(clickX - correctX) > 5) {
+        const clickColor = grade === "perfect" ? "#16a34a"
+                         : grade === "good"    ? "#d97706"
+                                               : "#dc2626";
+        /* dashed bridge */
+        ctx.strokeStyle = clickColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(clickX, LINE_Y);
+        ctx.lineTo(correctX, LINE_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        /* player pin and arrow */
+        drawPin(clickX, LINE_Y, clickColor, 8);
+        drawArrowDown(clickX, LINE_Y - 26, clickColor, 13);
+      }
+
+      /* correct position — always shown */
+      drawPin(correctX, LINE_Y, "#6d28d9", 11);
+      drawArrowDown(correctX, LINE_Y - 30, "#6d28d9", 17);
+
+      ctx.fillStyle = "#6d28d9";
+      ctx.font = "bold 12px 'Fredoka',sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(String(cur.num), correctX, LINE_Y - 31);
+    }
+  }
+
+  function drawPin(x, lineY, color, r) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, lineY, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(x, lineY, r * 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawArrowDown(x, tipY, color, size) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, tipY);
+    ctx.lineTo(x - size / 2, tipY - size);
+    ctx.lineTo(x + size / 2, tipY - size);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function getTicks(mn, mx) {
+    const range = mx - mn;
+    let step;
+    if (range <= 20)       step = 2;
+    else if (range <= 100) step = 10;
+    else if (range <= 200) step = 25;
+    else                   step = 100;
+    const t = [];
+    for (let i = mn; i <= mx; i += step) t.push(i);
+    return t;
+  }
+
+  function drawTicks() {
+    const ticks = getTicks(cur.min, cur.max);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ticks.forEach(v => {
+      const x = numToX(v);
+      const isEnd = (v === cur.min || v === cur.max);
+      const th = isEnd ? 14 : 7;
+      ctx.strokeStyle = isEnd ? "#6d28d9" : "#d97706";
+      ctx.lineWidth   = isEnd ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, LINE_Y - th);
+      ctx.lineTo(x, LINE_Y + th);
+      ctx.stroke();
+
+      ctx.font = (isEnd ? "bold 13px" : "600 11px") + " 'Fredoka',sans-serif";
+      ctx.fillStyle = isEnd ? "#6d28d9" : "#92400e";
+      ctx.fillText(String(v), x, LINE_Y + th + 3);
+    });
+  }
+
+  /* ── UI state ── */
+  function showBest() {
+    $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " punten") : "";
+  }
+  showBest();
+
+  function buildLevelbar() {
+    const b = $("levelbar"); b.innerHTML = "";
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement("div");
+      d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+      b.appendChild(d);
+    }
+  }
+
+  function render() {
+    answered = false;
+    buildLevelbar();
+    $("feedback").textContent = "";
+    $("feedback").className = "feedback";
+    makeQuestion();
+
+    const nd = $("numDisplay");
+    nd.classList.remove("animate");
+    nd.textContent = String(cur.num);
+    void nd.offsetWidth;
+    nd.classList.add("animate");
+
+    $("diffBadge").textContent = cur.name + " (" + cur.label + ")";
+    $("roundPill").textContent  = (idx + 1) + "/" + TOTAL;
+    drawLine(null, null);
+  }
+
+  function getCanvasX(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return (clientX - rect.left) * scaleX;
+  }
+
+  function handleClick(e) {
+    if (answered) return;
+    e.preventDefault();
+    const x = getCanvasX(e);
+    const cx = Math.max(PAD_L, Math.min(PAD_L + LINE_W, x));
+    const clickedNum = xToNum(cx);
+    const range = cur.max - cur.min;
+    const errPct = Math.abs(clickedNum - cur.num) / range;
+
+    let grade, pts, msg;
+    if (errPct <= 0.05)      { grade = "perfect"; pts = 3; msg = "⭐ Perfect! Precies goed!"; }
+    else if (errPct <= 0.10) { grade = "good";    pts = 1; msg = "👍 Goed! Bijna precies!"; }
+    else                     { grade = "bad";     pts = 0; msg = "❌ Hier hoorde " + cur.num; }
+
+    answered = true;
+    score += pts;
+    $("score").textContent = score;
+    $("feedback").className = "feedback " + (grade === "perfect" ? "good" : grade === "good" ? "close" : "bad");
+    $("feedback").textContent = msg;
+    drawLine(cx, grade);
+
+    idx++;
+    buildLevelbar();
+    setTimeout(() => { if (idx >= TOTAL) endGame(); else render(); }, 1700);
+  }
+
+  canvas.addEventListener("click", handleClick);
+  canvas.addEventListener("touchstart", handleClick, { passive: false });
+
+  function startGame() {
+    idx = 0; score = 0;
+    $("score").textContent = "0";
+    $("roundPill").textContent = "1/" + TOTAL;
+    ["startScreen", "endScreen"].forEach(id => $(id).classList.add("hidden-el"));
+    $("playScreen").classList.remove("hidden-el");
+    render();
+  }
+
+  function endGame() {
+    $("playScreen").classList.add("hidden-el");
+    $("endScreen").classList.remove("hidden-el");
+    const maxScore = TOTAL * 3;
+    let rec = false;
+    if (score > best) {
+      best = score; rec = true;
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch(e){}
+    }
+    showBest();
+    const pct = score / maxScore;
+    $("endEmoji").textContent = pct === 1 ? "🏆" : (pct >= 0.7 ? "🎉" : "💪");
+    $("endTitle").textContent = pct === 1 ? "Getallenlijn-meester!" : (pct >= 0.7 ? "Goed gedaan!" : "Blijf oefenen!");
+    $("endScore").textContent = score;
+    $("endMax").textContent   = "van " + maxScore;
+    $("endText").innerHTML = (rec && score > 0 ? "🏅 Nieuw record! " : "") + "10 rondes, van 0 tot 1000!";
+  }
+
+  $("startBtn").onclick = startGame;
+  $("againBtn").onclick = startGame;
+})();
+</script>
+</body>
+</html>

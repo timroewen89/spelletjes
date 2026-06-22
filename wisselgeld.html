@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wisselgeld</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+/* ── Signature colour for this game ── */
+:root {
+  --violet:      #16a34a;
+  --violet-dark: #15803d;
+  /* local design tokens */
+  --ground:      #f0faf4;
+  --text-deep:   #1a3a2a;
+  --gold:        #d97706;
+  --gold-dark:   #b45309;
+  --tag-bg:      #fffef9;
+  --border-soft: #b8dbc5;
+  --shadow-g:    rgba(22,90,42,.13);
+}
+
+/* Override the body background — unique to this game */
+body {
+  background: radial-gradient(140% 140% at 50% 0%,
+    #f7fbf8 0%, var(--ground) 60%, #ddf0e5 100%) !important;
+  color: var(--text-deep);
+}
+
+.card {
+  background: var(--tag-bg);
+  width: 100%;
+  max-width: 540px;
+  border-radius: 28px;
+  padding: 28px 26px 32px;
+  box-shadow: 0 20px 48px var(--shadow-g);
+  text-align: center;
+}
+
+h1 {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 1.9rem;
+  color: var(--text-deep);
+  letter-spacing: -.01em;
+}
+
+.sub {
+  color: #4a7a5a;
+  font-weight: 700;
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+.best {
+  color: var(--violet-dark);
+  font-weight: 800;
+  font-size: .88rem;
+  margin-bottom: 10px;
+  min-height: 1.1em;
+}
+
+/* Progress dots */
+.levelbar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.dot {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  background: #c8e3d0;
+}
+.dot.done   { background: var(--violet); }
+.dot.active { background: var(--gold); transform: scale(1.35); }
+
+/* ── Price tag: the visual centrepiece ── */
+.tag-wrap {
+  display: flex;
+  justify-content: center;
+  /* extra top padding gives the dashed string room */
+  padding-top: 16px;
+  margin-bottom: 18px;
+}
+
+@keyframes swing-in {
+  0%   { transform: rotate(-8deg) translateY(-4px); opacity: 0; }
+  55%  { transform: rotate(1.8deg); }
+  78%  { transform: rotate(-1.2deg); }
+  100% { transform: rotate(-2deg); opacity: 1; }
+}
+
+.tag {
+  position: relative;
+  background: var(--tag-bg);
+  border: 2.5px solid var(--border-soft);
+  border-radius: 12px 12px 14px 14px;
+  padding: 22px 32px 18px;
+  width: 220px;
+  box-shadow:
+    3px 5px 0 var(--border-soft),
+    0 12px 28px rgba(22,90,42,.10);
+  transform: rotate(-2deg);
+  transform-origin: top center;
+  animation: swing-in .45s cubic-bezier(.34,1.4,.64,1) both;
+}
+
+/* Punched hole */
+.tag::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--ground);
+  border: 2.5px solid var(--border-soft);
+}
+
+/* Dashed string hanging above */
+.tag::after {
+  content: '';
+  position: absolute;
+  top: -32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px; height: 30px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #6b9f7a 0px, #6b9f7a 3px,
+    transparent 3px, transparent 6px
+  );
+}
+
+.tag-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.tag-name {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: .78rem;
+  color: #4a7a5a;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.tag-price {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 2.7rem;
+  color: var(--text-deep);
+  line-height: 1;
+  display: block;
+}
+
+.tag-rule {
+  display: block;
+  margin-top: 12px;
+  border: none;
+  border-top: 1.5px dashed #c8e3d0;
+}
+
+/* ── Payment zone ── */
+.pay-zone {
+  background: var(--ground);
+  border-radius: 16px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  border: 1.5px solid var(--border-soft);
+}
+
+.pay-eyebrow {
+  font-family: 'Nunito', sans-serif;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  white-space: nowrap;
+}
+
+/* ── Coins & bills ── */
+.munt {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  color: #5a3e00;
+  box-shadow: 0 3px 0 rgba(0,0,0,.22);
+  flex-shrink: 0;
+}
+.munt.sm { width: 44px; height: 44px; border-radius: 50%; font-size: .78rem; }
+.munt.lg { width: 54px; height: 54px; border-radius: 50%; font-size: .9rem;  }
+.munt.koper { background: radial-gradient(circle at 35% 30%, #e9aa72, #c47e3c); }
+.munt.goud  { background: radial-gradient(circle at 35% 30%, #ffe08a, #deb040); }
+.munt.euro  {
+  background: radial-gradient(circle at 35% 30%, #fff2c2, #c9af68);
+  border: 3px solid #e5a93a;
+}
+
+.biljet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 3px 0 rgba(0,0,0,.22);
+  flex-shrink: 0;
+}
+.biljet.sm { width: 74px; height: 42px; font-size: .92rem; }
+.biljet.lg { width: 88px; height: 50px; font-size: 1rem;   }
+.biljet.v5  { background: linear-gradient(135deg, #b5bcee, #8090d8); }
+.biljet.v10 { background: linear-gradient(135deg, #ec9898, #d05a5a); }
+.biljet.v20 { background: linear-gradient(135deg, #80d46a, #4caa22); }
+.biljet.v50 { background: linear-gradient(135deg, #f5c86c, #da9622); }
+
+/* ── Question text ── */
+.q {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-deep);
+  margin-bottom: 14px;
+}
+
+/* ── Answer buttons ── */
+.opts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.opt {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 1.35rem;
+  color: var(--text-deep);
+  background: #e8f5ec;
+  border: 2px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 15px 8px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--border-soft);
+  transition: transform .06s, box-shadow .06s;
+  line-height: 1.3;
+}
+.opt:hover:not(:disabled) {
+  background: #d4eedd;
+  border-color: #8cc5a4;
+}
+.opt:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--border-soft);
+}
+.opt:focus-visible {
+  outline: 3px solid var(--violet);
+  outline-offset: 2px;
+}
+.opt.good {
+  background: var(--good);
+  color: #fff;
+  border-color: #11823b;
+  box-shadow: 0 5px 0 #11823b;
+}
+.opt.bad {
+  background: var(--bad);
+  color: #fff;
+  border-color: #a81d1d;
+  box-shadow: 0 5px 0 #a81d1d;
+}
+.opt:disabled { cursor: default; }
+
+/* ── Feedback line ── */
+.feedback {
+  min-height: 28px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 12px;
+}
+.feedback.good { color: var(--good); }
+.feedback.bad  { color: var(--bad); }
+
+/* Coins shown after answer */
+.change-show {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  min-height: 22px;
+}
+
+/* ── Start screen ── */
+.intro-tag {
+  background: #e8f5ec;
+  border: 2px dashed #8cc5a4;
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.intro-tag p {
+  font-weight: 700;
+  color: var(--text-deep);
+  font-size: .97rem;
+  line-height: 1.55;
+}
+.intro-eg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.intro-eg .chip {
+  background: var(--tag-bg);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 5px 11px;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: .9rem;
+  color: var(--text-deep);
+}
+.intro-eg .chip.acc {
+  background: var(--violet);
+  color: #fff;
+  border-color: var(--violet-dark);
+}
+.intro-eg .arrow {
+  color: #8cc5a4;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.hint-foot {
+  font-size: .8rem;
+  color: #4a7a5a;
+  margin-top: 16px;
+  font-weight: 700;
+}
+</style>
+</head>
+<body>
+  <a class="back" href="index.html">← Menu</a>
+
+  <div class="top">
+    <div class="pill">
+      <span class="lbl">Goed</span>
+      <span class="val" id="score">0</span>
+    </div>
+    <div class="pill">
+      <span class="lbl">Vraag</span>
+      <span class="val" id="progress">1/10</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h1>🪙 Wisselgeld</h1>
+    <p class="sub">Hoeveel wisselgeld krijg je terug?</p>
+    <div class="best" id="best"></div>
+    <div class="levelbar" id="levelbar"></div>
+
+    <!-- START SCREEN -->
+    <div id="startScreen">
+      <div class="intro-tag">
+        <p>Je koopt iets in de winkel en betaalt te veel. Hoeveel geld krijg je terug?</p>
+        <div class="intro-eg">
+          <span class="chip">Brood &euro;1,35</span>
+          <span class="arrow">+</span>
+          <span class="chip">Betaald &euro;2,00</span>
+          <span class="arrow">=</span>
+          <span class="chip acc">Terug &euro;0,65</span>
+        </div>
+      </div>
+      <button class="bigbtn" id="startBtn">Start 🚀</button>
+      <p class="hint-foot">10 vragen &mdash; van 5 cent tot &euro;20</p>
+    </div>
+
+    <!-- PLAY SCREEN -->
+    <div id="playScreen" class="hidden-el">
+
+      <!-- Price tag -->
+      <div class="tag-wrap">
+        <div class="tag" id="priceTag">
+          <span class="tag-emoji" id="shopEmoji">🍞</span>
+          <span class="tag-name" id="shopName">Brood</span>
+          <span class="tag-price" id="shopPrice">&euro;1,35</span>
+          <span class="tag-rule"></span>
+        </div>
+      </div>
+
+      <!-- Payment zone -->
+      <div class="pay-zone">
+        <span class="pay-eyebrow">Betaald</span>
+        <div id="payCoins"></div>
+      </div>
+
+      <div class="q">Hoeveel wisselgeld krijg je terug?</div>
+      <div class="opts" id="opts"></div>
+      <div class="feedback" id="feedback">&nbsp;</div>
+      <div class="change-show" id="changeShow"></div>
+    </div>
+
+    <!-- END SCREEN -->
+    <div id="endScreen" class="hidden-el">
+      <div style="font-size:3.4rem;margin-bottom:4px" id="endEmoji">🎉</div>
+      <h1 id="endTitle">Goed gedaan!</h1>
+      <p class="sub" id="endText"></p>
+      <button class="bigbtn" id="againBtn">Nog een keer 🔁</button>
+    </div>
+  </div>
+
+<script>
+const TOTAL    = 10;
+const BEST_KEY = "wisselgeld_best";
+let best = 0;
+try { best = parseInt(localStorage.getItem(BEST_KEY) || "0", 10) || 0; } catch(e) {}
+let idx = 0, score = 0, cur = null, answered = false;
+const $ = id => document.getElementById(id);
+
+/* ── Formatting ── */
+const pad = n => (n < 10 ? "0" : "") + n;
+function fmtCents(c) {
+  if (c < 100) return c + " cent";
+  const e = Math.floor(c / 100), r = c % 100;
+  return r === 0 ? ("€" + e) : ("€" + e + "," + pad(r));
+}
+const shuffle = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(p => p[1]);
+
+function showBest() {
+  $("best").textContent = best > 0 ? ("🏅 Beste: " + best + " / " + TOTAL) : "";
+}
+showBest();
+
+/* ── Shop items (price in cents) ── */
+const ITEMS = [
+  { emoji:"🍞", name:"Brood",           price: 135 },
+  { emoji:"🥛", name:"Melk",            price:  89 },
+  { emoji:"🍫", name:"Chocoladereep",   price: 145 },
+  { emoji:"🍎", name:"Appel",           price:  55 },
+  { emoji:"🧃", name:"Sapje",           price: 115 },
+  { emoji:"✏️",  name:"Potlood",         price:  75 },
+  { emoji:"📚", name:"Boek",            price: 895 },
+  { emoji:"🎈", name:"Ballon",          price:  40 },
+  { emoji:"🍦", name:"IJsje",           price: 185 },
+  { emoji:"🧁", name:"Cupcake",         price: 165 },
+  { emoji:"🥐", name:"Croissant",       price: 125 },
+  { emoji:"🎯", name:"Dartspel",        price: 450 },
+  { emoji:"🖊️",  name:"Pen",            price:  95 },
+  { emoji:"🧸", name:"Knuffelbeer",     price: 650 },
+  { emoji:"🍕", name:"Pizza",           price: 725 },
+];
+
+const DENOMINATIONS = [5, 10, 20, 50, 100, 200, 500, 1000, 2000];
+
+function pickPayment(priceCents) {
+  const options = [];
+  for (const d of DENOMINATIONS) {
+    if (d > priceCents) options.push(d);
+  }
+  for (let i = 0; i < DENOMINATIONS.length; i++) {
+    for (let j = i; j < DENOMINATIONS.length; j++) {
+      const combo = DENOMINATIONS[i] + DENOMINATIONS[j];
+      if (combo > priceCents && combo <= priceCents + 1500) options.push(combo);
+    }
+  }
+  if (options.length === 0) options.push(DENOMINATIONS[DENOMINATIONS.length - 1]);
+  const nice   = options.filter(o => (o - priceCents) % 5 === 0);
+  const pool   = nice.length > 0 ? nice : options;
+  const sorted = [...new Set(pool)].sort((a, b) => a - b);
+  return sorted[Math.min(Math.floor(Math.random() * 3), sorted.length - 1)];
+}
+
+function paymentCoins(paymentCents) {
+  if (DENOMINATIONS.includes(paymentCents)) return [paymentCents];
+  for (let i = DENOMINATIONS.length - 1; i >= 0; i--) {
+    const rest = paymentCents - DENOMINATIONS[i];
+    if (rest > 0 && DENOMINATIONS.includes(rest)) return [DENOMINATIONS[i], rest];
+  }
+  return [paymentCents];
+}
+
+/* ── Coin / bill element factory ── */
+function coinEl(c, sz) {
+  sz = sz || "sm";
+  const d = document.createElement("div");
+  if (c >= 500) {
+    const cls = c === 500 ? "v5" : c === 1000 ? "v10" : c === 2000 ? "v20" : "v50";
+    d.className   = "biljet " + cls + " " + sz;
+    d.textContent = "€" + (c / 100);
+  } else {
+    const style   = c < 100 ? (c <= 20 ? "koper" : "goud") : "euro";
+    d.className   = "munt " + style + " " + sz;
+    d.textContent = c < 100 ? (c + "ct") : ("€" + (c / 100));
+  }
+  return d;
+}
+
+function makeChange(changeCents) {
+  const result = [];
+  let rem = changeCents;
+  for (const d of [...DENOMINATIONS].reverse()) {
+    while (rem >= d) { result.push(d); rem -= d; }
+  }
+  return result;
+}
+
+/* ── Game logic ── */
+function makeQuestion() {
+  const itemPool = shuffle(ITEMS);
+  const item     = itemPool[idx % itemPool.length];
+  const payment  = pickPayment(item.price);
+  const change   = payment - item.price;
+
+  const set    = new Set([change]);
+  const deltas = [5, 10, 20, 25, 50, 100];
+  let guard    = 0;
+  while (set.size < 4 && guard++ < 80) {
+    const d = deltas[Math.floor(Math.random() * deltas.length)] * (Math.random() < .5 ? 1 : -1);
+    const v = change + d;
+    if (v > 0 && v % 5 === 0 && v !== payment) set.add(v);
+  }
+  while (set.size < 4) {
+    const extra = change + (set.size * 10) + 5;
+    if (!set.has(extra)) set.add(extra);
+  }
+
+  cur = {
+    item,
+    payment,
+    payCoins: paymentCoins(payment),
+    change,
+    opts: shuffle([...set]).slice(0, 4),
+  };
+}
+
+function buildLevelbar() {
+  const b = $("levelbar");
+  b.innerHTML = "";
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.createElement("div");
+    d.className = "dot" + (i < idx ? " done" : "") + (i === idx ? " active" : "");
+    b.appendChild(d);
+  }
+}
+
+function render() {
+  answered = false;
+  buildLevelbar();
+  $("feedback").innerHTML = "&nbsp;"; $("feedback").className = "feedback";
+  $("changeShow").innerHTML = "";
+  makeQuestion();
+
+  /* Retrigger the tag swing animation */
+  const tag = $("priceTag");
+  tag.style.animation = "none";
+  tag.offsetHeight; /* force reflow */
+  tag.style.animation = "swing-in .45s cubic-bezier(.34,1.4,.64,1) both";
+
+  $("shopEmoji").textContent = cur.item.emoji;
+  $("shopName").textContent  = cur.item.name;
+  $("shopPrice").textContent = fmtCents(cur.item.price);
+
+  const pc = $("payCoins");
+  pc.innerHTML = "";
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;";
+  cur.payCoins.forEach(c => row.appendChild(coinEl(c, "lg")));
+  pc.appendChild(row);
+
+  $("progress").textContent = (idx + 1) + "/" + TOTAL;
+
+  const o = $("opts");
+  o.innerHTML = "";
+  cur.opts.forEach(v => {
+    const b      = document.createElement("button");
+    b.className  = "opt";
+    b.textContent = fmtCents(v);
+    b.onclick     = () => answer(b, v);
+    o.appendChild(b);
+  });
+}
+
+function answer(btn, val) {
+  if (answered) return;
+  answered = true;
+  const fb = $("feedback");
+  [...$("opts").children].forEach(b => {
+    b.disabled = true;
+    if (b.textContent === fmtCents(cur.change)) b.classList.add("good");
+  });
+  if (val === cur.change) {
+    score++;
+    $("score").textContent = score;
+    fb.className  = "feedback good";
+    fb.textContent = "Helemaal goed!";
+  } else {
+    btn.classList.add("bad");
+    fb.className  = "feedback bad";
+    fb.textContent = "Het wisselgeld was " + fmtCents(cur.change);
+  }
+  /* Always show the correct change coins */
+  const cs = $("changeShow");
+  makeChange(cur.change).forEach(c => cs.appendChild(coinEl(c, "sm")));
+
+  idx++;
+  buildLevelbar();
+  setTimeout(() => { if (idx >= TOTAL) endGame(); else render(); }, 1500);
+}
+
+function startGame() {
+  idx = 0; score = 0;
+  $("score").textContent = 0;
+  $("startScreen").classList.add("hidden-el");
+  $("endScreen").classList.add("hidden-el");
+  $("playScreen").classList.remove("hidden-el");
+  render();
+}
+
+function endGame() {
+  $("playScreen").classList.add("hidden-el");
+  $("endScreen").classList.remove("hidden-el");
+  let rec = false;
+  if (score > best) {
+    best = score; rec = true;
+    try { localStorage.setItem(BEST_KEY, String(best)); } catch(e) {}
+  }
+  showBest();
+  $("endEmoji").textContent  = score === TOTAL ? "🏆" : (score >= 7 ? "🎉" : "💪");
+  $("endTitle").textContent  = score === TOTAL ? "Wisselgeld-kampioen!" : (score >= 7 ? "Goed gedaan!" : "Blijf oefenen!");
+  $("endText").innerHTML     = "Je had <b>" + score + " van de " + TOTAL + "</b> goed!" + (rec && score > 0 ? " 🏅 Record!" : "");
+}
+
+$("startBtn").onclick = startGame;
+$("againBtn").onclick = startGame;
+</script>
+</body>
+</html>
